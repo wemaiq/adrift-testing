@@ -578,11 +578,11 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && !bgAu
 
   const COLLISION_PAD = 15, PUSH_STRENGTH = 0.02, FRICTION = 0.34;
 
-  // Perspective tuning (added)
-  const PERSPECTIVE_MIN_SCALE = 0.7;   // scale at very top
-  const PERSPECTIVE_MAX_SCALE = 1.35;  // scale at very bottom
-  const OPACITY_MIN = 0.35;            // opacity at very top
-  const OPACITY_MAX = 0.95;            // opacity at very bottom
+  // Perspective tuning
+  const PERSPECTIVE_MIN_SCALE = 0.70;
+  const PERSPECTIVE_MAX_SCALE = 1.35;
+  const OPACITY_MIN = 0.35;
+  const OPACITY_MAX = 0.95;
 
   // Holds fetched approved doubts and session tracking
 let APPROVED_DOUBTS = [];
@@ -622,7 +622,7 @@ function pickRandomDoubt() {
   for (const doubt of SHUFFLED_DOUBTS) {
     if (!USED_DOUBT_IDS.has(doubt.id)) {
       selectedDoubt = doubt;
-      USED_DOUBT_IDS.add(doubt.id);
+      USED_DOUBT_IDS.add(selectedDoubt.id);
       break;
     }
   }
@@ -665,8 +665,9 @@ function pickRandomDoubt() {
       // Use canvas dimensions directly (no DPR scaling)
       this.yBase = Math.random() * H * 0.75 + H * 0.1;
 
-      // SPAWN FIX: re-enter just barely off the left edge so it appears immediately
-      this.x = initial ? Math.random() * W : -10 - Math.random() * 30;
+      // ENTRY: start fully off-screen to the left (by half-width + 2px)
+      const approxW = this._w || (BOAT_HEIGHT * 1.8);
+      this.x = initial ? Math.random() * W : -(approxW * 0.5) - 2;
 
       this.phase = Math.random() * Math.PI * 2;
       this.alpha = 0.95;
@@ -725,7 +726,15 @@ function pickRandomDoubt() {
       // PERSPECTIVE: scale & opacity by vertical position
       const yNorm = Math.max(0, Math.min(1, (this.y || this.yBase) / H));
       const scale = PERSPECTIVE_MIN_SCALE + (PERSPECTIVE_MAX_SCALE - PERSPECTIVE_MIN_SCALE) * yNorm;
-      let a = (this.alpha) * (OPACITY_MIN + (OPACITY_MAX - OPACITY_MIN) * yNorm);
+
+      // Bottom 50% = full opacity; top 50% fades
+      let a;
+      if (yNorm >= 0.5) {
+        a = 1;
+      } else {
+        const t = yNorm / 0.5;
+        a = OPACITY_MIN + (1 - OPACITY_MIN) * t;
+      }
       if(this.morphingOut) a = 0;
       if(a <= 0) return;
 
