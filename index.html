@@ -39,45 +39,30 @@
     transition: opacity 1s ease-out;
     pointer-events: all;
   }
-  
-  #intro-overlay.fade-out {
-    opacity: 0;
-    pointer-events: none;
-  }
-  
+  #intro-overlay.fade-out { opacity: 0; pointer-events: none; }
   #intro-text {
     font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
-    font-size: 16px;
-    line-height: 1.8;
+    font-size: 16px; line-height: 1.8;
     color: rgba(236, 236, 237, 0.85);
-    text-align: center;
-    max-width: 500px;
-    opacity: 0;
-    animation: fadeInText 2s ease-in forwards;
-    font-weight: 300;
-    letter-spacing: 0.02em;
+    text-align: center; max-width: 500px;
+    opacity: 0; animation: fadeInText 2s ease-in forwards;
+    font-weight: 300; letter-spacing: 0.02em;
   }
-  
-  #intro-text.fade-out-text {
-    animation: fadeOutText 1.5s ease-out forwards;
-  }
-  
+  #intro-text.fade-out-text { animation: fadeOutText 1.5s ease-out forwards; }
   @keyframes fadeInText { to { opacity: 1; } }
   @keyframes fadeOutText { to { opacity: 0; } }
   @keyframes fadeInCounter { to { opacity: 1; } }
 
-  /* Initially hide main content */
   .main-content { opacity: 0; transition: opacity 1.5s ease-in; }
   .main-content.visible { opacity: 1; }
 
-  /* Layering: rain over boats (click-through), boats under notes */
+  /* Layering */
   #rain  { position:fixed; inset:0; z-index:2; pointer-events:none; }
   #canvas{ position:fixed; inset:0; z-index:1; }
 
   header{ font-weight:400; position:fixed; top:18px; left:50%; transform:translateX(-50%); letter-spacing:0.25em; font-size:20px; font-family:"Dongle", ui-sans-serif, system-ui, sans-serif;text-transform:uppercase; text-align:center; user-select:none; z-index:5; }
   .hint{ font-weight:400; position:fixed; left:20px; bottom:16px; color:#9aa0a8; font-size:12px; opacity:.7; user-select:none; background: rgba(255,255,255,.03); letter-spacing: 0.05em; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); backdrop-filter: blur(3px); z-index:5; }
 
-  /* Sound toggle */
   .sound-toggle{
     position:fixed; right:20px; bottom:16px; z-index:5;
     background: rgba(255,255,255,.03);
@@ -91,7 +76,6 @@
   .sound-toggle.active{ color:#ececed; border-color: rgba(255,255,255,.12); }
   .sound-toggle:focus-visible{ outline:2px solid rgba(255, 200, 100, 0.25); outline-offset:2px; }
 
-  /* Center-bottom CTA (kept) */
   .cta-btn{ 
     position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:5;
     padding:28px 36px; border-radius:9999px; font-size:13px; line-height:1; color:#fff;
@@ -108,130 +92,64 @@
   /* Hidden media */
   #boatVideo, #bgAudio { position: fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none; }
 
-  /* ===========================================================
-     Unfolding NOTE (used for both boat view + composer)
-     =========================================================== */
+  /* ===== Notes ===== */
   .note-overlay { position: fixed; inset:0; z-index:6; pointer-events:none; }
   .overlay-close { position:fixed; inset:0; background: transparent; pointer-events:auto; }
 
   .note{
-    position:absolute;
-    width: min(350px, 90vw); 
-    height: min(350px, 90vw);
+    position:absolute; width:min(350px, 90vw); height:min(350px, 90vw);
     transform-style: preserve-3d; perspective: 800px;
-    pointer-events:auto;
-    filter: drop-shadow(0 12px 40px rgba(0,0,0,.55));
+    pointer-events:auto; filter: drop-shadow(0 12px 40px rgba(0,0,0,.55));
     transition: transform .35s ease, opacity .25s ease;
-    cursor: grab;
-    user-select: none; touch-action: none;
-    will-change: left, top, opacity, transform;
+    cursor: grab; user-select: none; touch-action: none; will-change: left, top, opacity, transform;
     background: transparent;
   }
   .note.dragging{ cursor: grabbing; }
   .note.closing{ opacity:0; transform: scale(.98) translateZ(0); pointer-events:none; }
 
-  /* FIXED: Circle close button for mobile */
   .note-close{
-    position:absolute; top:10px; right:10px;
-    width:28px; height:28px;
-    border-radius:50%;
-    aspect-ratio: 1 / 1;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background: rgba(12,14,18,.65);
-    color:#fff; font-size:16px; line-height:1;
-    border:1px solid rgba(255,255,255,.18);
-    box-shadow:none;
-    cursor:pointer;
-    opacity:0; 
-    pointer-events:none;
-    transition: opacity .25s ease, transform .20s ease, background .2s ease, border-color .2s ease;
-    z-index:3;
-    -webkit-appearance: none; -moz-appearance: none; appearance: none;
-    padding: 0; box-sizing: border-box; overflow: hidden; text-align: center;
+    position:absolute; top:10px; right:10px; width:28px; height:28px;
+    border-radius:50%; aspect-ratio: 1 / 1; display:flex; align-items:center; justify-content:center;
+    background: rgba(12,14,18,.65); color:#fff; font-size:16px; line-height:1;
+    border:1px solid rgba(255,255,255,.18); box-shadow:none; cursor:pointer;
+    opacity:0; pointer-events:none; transition: opacity .25s ease, transform .20s ease, background .2s ease, border-color .2s ease; z-index:3;
+    -webkit-appearance: none; appearance: none; padding: 0; box-sizing: border-box; overflow: hidden; text-align: center;
     transform: scale(.92) translateZ(0);
-    -webkit-transform: scale(.92) translateZ(0);
   }
-  .note.unfold .note-close{
-    opacity:1; transform: scale(1) translateZ(0);
-    transition-delay: 1.25s, 1.25s, 0s, 0s;
-    pointer-events:auto;
-  }
+  .note.unfold .note-close{ opacity:1; transform: scale(1) translateZ(0); transition-delay: 1.25s, 1.25s, 0s, 0s; pointer-events:auto; }
   .note-close:hover{ transform: scale(1.06) translateZ(0); background: rgba(12,14,18,.78); border-color: rgba(255,255,255,.28); }
   .note-close:active{ transform: scale(.98) translateZ(0); }
   .note-close:focus-visible{ outline:2px solid rgba(255, 180, 60, 0.5); outline-offset:2px; }
 
   .note-stage, .note-frame { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); width:100%; height:100%; }
   .note-frame{ opacity:0; box-shadow: 0 0 40px rgba(0,0,0,0.06); animation: note-show 0.5s 1s ease forwards; }
-
-  .note-box{
-    position:absolute;
-    width:calc(50% - 25px); height:calc(50% - 25px);
-    background: var(--paper-face);
-    border: 25px solid var(--paper-edge);
-    box-shadow: 0 0 40px rgba(0,0,0,0.07);
-    overflow:hidden; border-radius:4px;
-  }
-  .note-box .note-in{
-    position:absolute; width:100px; height:100px; border-radius:50%;
-    background: transparent !important;
-    animation: note-grow 0.5s 3s cubic-bezier(0.66,-0.30,0.66,1) forwards;
-  }
-  .note-box .one{ left:100px; bottom:-50px; }
-  .note-box .two{ left:-50px;  bottom:-50px; }
-  .note-box .thr{ left:100px; bottom:100px; }
-  .note-box .fou{ left:-50px;  bottom:100px; }
-
+  .note-box{ position:absolute; width:calc(50% - 25px); height:calc(50% - 25px); background: var(--paper-face); border: 25px solid var(--paper-edge); box-shadow: 0 0 40px rgba(0,0,0,0.07); overflow:hidden; border-radius:4px; }
+  .note-box .note-in{ position:absolute; width:100px; height:100px; border-radius:50%; background: transparent !important; animation: note-grow 0.5s 3s cubic-bezier(0.66,-0.30,0.66,1) forwards; }
+  .note-box .one{ left:100px; bottom:-50px; } .note-box .two{ left:-50px;  bottom:-50px; } .note-box .thr{ left:100px; bottom:100px; } .note-box .fou{ left:-50px;  bottom:100px; }
   .note-box:nth-child(1){ border-right:none; border-bottom:none; border-radius: 5px 0 0 0; animation: note-clr 0.5s 0.5s ease forwards; }
   .note-box:nth-child(2){ left:50%; border-left:none; border-bottom:none; border-radius: 0 5px 0 0; transform-origin: 0 0; transform: rotateY(180deg); animation: note-fold 0.5s 0.5s ease forwards; }
   .note-box:nth-child(3){ top:50%; opacity:0; border-top:none; border-right:none; border-radius: 0 0 0 5px; transform: rotateX(180deg); transform-origin: 0 0; animation: note-fold2 0.5s 1s ease forwards; }
   .note-box:nth-child(4){ top:50%; left:50%; opacity:0; border-top:none; border-left:none; border-radius: 0 0 5px 0; transform: rotateX(180deg); transform-origin: 0 0; animation: note-fold2 0.5s 1s ease forwards; }
 
-  .note-content{
-    position:absolute; inset:22px 24px;
-    display:flex; flex-direction:column; justify-content:flex-start;
-    color:#0e1520; opacity:0; transform: translateY(4px);
-    transition: opacity .45s ease 1.2s, transform .45s ease 1.2s;
-    font-synthesis-weight:none;
-    padding: 0;
-    background: transparent;
-  }
+  .note-content{ position:absolute; inset:22px 24px; display:flex; flex-direction:column; justify-content:flex-start; color:#0e1520; opacity:0; transform: translateY(4px); transition: opacity .45s ease 1.2s, transform .45s ease 1.2s; font-synthesis-weight:none; padding: 0; background: transparent; }
   .note.unfold .note-content{ opacity:1; transform: translateY(0); }
-
   .note-title{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#4c5562; margin-bottom:10px; }
   .note-text{ font-size:20px; line-height:1.55; color:#10151c; }
   .note-meta{ margin-top:14px; font-size:12px; color:#5a6472; }
 
-  @keyframes note-clr { 0%, 100% { background: var(--paper-face); } }
-  @keyframes note-fold { 0%, 99.99% { background: var(--paper-face); } 100% { background: var(--paper-face); transform: rotateY(360deg); } }
-  @keyframes note-fold2 { 0%{opacity:1;background:var(--paper-face);} 25%{opacity:1} 40%{opacity:1} 100%{opacity:1;background:var(--paper-face);transform: rotateX(0deg);} }
-  @keyframes note-show { to { opacity:1; } }
-
-  /* Composer form bits */
   .compose-field{ width:100%; min-height:110px; resize:vertical; box-sizing:border-box; border-radius:8px; border:1px solid rgba(0,0,0,.1); padding:10px 12px; font: 16px/1.5 ui-sans-serif, system-ui; color:#0e1520; background:#fff; }
   .compose-field:focus { outline: none; border-color: rgba(7, 7, 7, 0.4); box-shadow: 0 0 0 1px rgba(255, 180, 60, 0.15); }
   .compose-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:12px; color:#4c5562; }
   .pill-btn{ padding:12px 18px; border-radius:999px; border:1px solid rgba(0,0,0,.12); background:#0f172a; color:#fff; cursor:pointer; }
   .pill-btn:focus-visible { outline: 2px solid rgba(255, 180, 60, 0.5); outline-offset: 2px; }
 
-  .note .compose-field { touch-action: auto; user-select: text; }
-  .note .compose-foot button { touch-action: auto; }
-
   html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
   .figtree-adrift { font-family: "Figtree", ui-sans-serif, system-ui, sans-serif; font-optical-sizing: auto; font-weight: 600; font-style: normal; }
   .dongle-regular { font-family: "Dongle", sans-serif; font-weight: 400; font-style: normal; }
-
   .ripple > * { display: inline-block; text-shadow: 0 0 0 #fff; color: transparent; }
-  @keyframes rippleEffect {
-    40% { opacity: .35; }
-    50% { transform: translate3d(.5em, 0, 0) scale(1.1); text-shadow: 0 0 20px #fff; }
-    75% { transform: translate3d(0, 0, 0) scale(1); text-shadow: 0 0 0 #fff; opacity: 1; }
-  }
-
+  @keyframes rippleEffect { 40% { opacity: .35; } 50% { transform: translate3d(.5em, 0, 0) scale(1.1); text-shadow: 0 0 20px #fff; } 75% { transform: translate3d(0, 0, 0) scale(1); text-shadow: 0 0 0 #fff; opacity: 1; } }
   header.ripple span.figtree-adrift { font-family: "Figtree", ui-sans-serif, system-ui, sans-serif; font-weight: 700; }
 
-  /* Mobile responsive styles */
   @media (max-width: 640px) {
     #intro-text { font-size: 14px; max-width: 85vw; }
     .note-content { inset: 21px 18px 16px 18px; }
@@ -240,24 +158,14 @@
     .note-meta { font-size: 11px; }
     .cta-btn { padding: 20px 28px; font-size: 12px; bottom: 70px; }
     header { font-size: 18px; }
-
-    .note-close {
-      top: 6px; width: 32px; height: 32px; font-size: 18px;
-      min-width: 32px; min-height: 32px; max-width: 32px; max-height: 32px;
-      display: flex; align-items: center; justify-content: center; line-height: 1;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding-bottom: 1px;
-    }
+    .note-close { top: 6px; width: 32px; height: 32px; font-size: 18px; min-width: 32px; min-height: 32px; max-width: 32px; max-height: 32px; display: flex; align-items: center; justify-content: center; line-height: 1; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding-bottom: 1px; }
   }
-
-  /* Landscape mobile */
   @media (max-height: 500px) and (orientation: landscape) {
     .hint { left: 10px; bottom: 10px;}
     .sound-toggle { right: 10px; bottom: 10px; }
     .cta-btn { bottom: 16px; padding: 16px 24px; }
     header { top: 10px; }
   }
-
-  /* Hi-DPI */
   @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
     .note-close { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; backface-visibility: hidden; transform-style: flat; }
   }
@@ -265,14 +173,14 @@
 </head>
 <body class="figtree-adrift">
   <!-- Intro overlay -->
- <div id="intro-overlay">
+  <div id="intro-overlay">
     <div id="intro-text">
       <span>Doubt is universal, yet deeply personal. It comes and goes like waves, like passing weather. Never the sky, never the sea. And when it fades, the stillness of being remains.</span>
       <div id="doubt-counter" style="margin-top: 20px; font-size: 12px; color: rgba(236, 236, 237, 0.5); opacity: 0; animation: fadeInCounter 2s ease-in 3s forwards;">— doubts released</div>
     </div>
   </div>
 
-  <!-- Main content wrapper -->
+  <!-- Main content -->
   <div class="main-content">
     <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
 
@@ -298,7 +206,6 @@
   const introOverlay = document.getElementById('intro-overlay');
   const introText = document.getElementById('intro-text');
   const mainContent = document.querySelector('.main-content');
-  
   setTimeout(() => {
     introText.classList.add('fade-out-text');
     setTimeout(() => {
@@ -309,51 +216,38 @@
   }, 8000);
 
   /* =====================
-     Supabase config (READ)
+     Supabase (READ)
      ===================== */
   const SUPABASE_URL  = 'https://lrjpntpvcgzjhowrlmit.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyanBudHB2Y2d6amhvd3JsbWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0OTk4ODcsImV4cCI6MjA3MjA3NTg4N30.sDdezusu8bp6lBp6hmU6QnJVIz0Et4VHp5giEpUTa40';
 
   async function fetchApprovedDoubts(limit = 500) {
     const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&order=created_at.desc&limit=${limit}`;
-    const res = await fetch(url, {
-      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, Accept: 'application/json' }
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(()=> '');
-      throw new Error(`Supabase fetch failed (${res.status}) ${text}`);
-    }
+    const res = await fetch(url, { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, Accept: 'application/json' } });
+    if (!res.ok) { const text = await res.text().catch(()=> ''); throw new Error(`Supabase fetch failed (${res.status}) ${text}`); }
     const rows = await res.json();
-    return rows.map(r => ({
-      id: r.id, text: r.doubt ?? '', date: (r.created_at || new Date().toISOString()).slice(0,10)
-    })).filter(d => d.text && d.text.trim().length);
+    return rows.map(r => ({ id: r.id, text: r.doubt ?? '', date: (r.created_at || new Date().toISOString()).slice(0,10) }))
+               .filter(d => d.text && d.text.trim().length);
   }
 
   async function fetchTotalDoubts() {
     const url = `${SUPABASE_URL}/rest/v1/doubts?select=count&approved=is.true`;
-    const res = await fetch(url, {
-      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, Accept: 'application/json', Prefer: 'count=exact' }
-    });
+    const res = await fetch(url, { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, Accept: 'application/json', Prefer: 'count=exact' }});
     if (!res.ok) return 0;
     return parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0');
   }
 
   /* ---------- n8n webhook ---------- */
   const N8N_WEBHOOK_URL = 'https://alexmiretski.app.n8n.cloud/webhook/release-doubt';
-
   async function postDoubtToN8N(text){
-    const res = await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
-    });
+    const res = await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
     let data = {}; try { data = await res.json(); } catch(e) {}
-    if (!res.ok || data?.ok === false) {
-      const msg = data?.error || `Request failed (${res.status})`;
-      throw new Error(msg);
-    }
+    if (!res.ok || data?.ok === false) { const msg = data?.error || `Request failed (${res.status})`; throw new Error(msg); }
     const d = Array.isArray(data) ? data[0] : data;
     return { id: d.id, created_at: d.created_at, doubt: d.doubt ?? text };
   }
 
+  /* ===== Canvas ===== */
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d', { alpha:true });
   const boatVideo = document.getElementById('boatVideo');
@@ -372,7 +266,7 @@
   addEventListener('resize', resize);
   resize();
 
-  /* ====== Media autoplay ====== */
+  /* ===== Media autoplay ===== */
   const DEFAULT_VOL = 0.28;
   function startAudio(){ bgAudio.volume = DEFAULT_VOL; bgAudio.play().then(()=> updateSoundUI(true)).catch(()=>{}); }
   function updateSoundUI(on){ soundToggle.classList.toggle('active', !!on); soundToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); soundToggle.textContent = on ? 'Sound: On' : 'Sound: Off'; }
@@ -393,9 +287,7 @@
       const currentSrc = boatVideo.src;
       boatVideo.src = ''; boatVideo.load();
       boatVideo.src = currentSrc + '?t=' + Date.now();
-      setTimeout(() => {
-        boatVideo.play().catch(() => { console.error('Video restart failed'); });
-      }, 500);
+      setTimeout(() => { boatVideo.play().catch(() => { console.error('Video restart failed'); }); }, 500);
       if (videoRestartAttempts < MAX_RESTART_ATTEMPTS) setTimeout(checkAndRestartVideo, 8000);
     }
   }
@@ -415,15 +307,17 @@
   /* ===== Boats ===== */
   const CROP = {x:0, y:0, w:1, h:1};
   const BOAT_COUNT = window.innerWidth <= 640 ? 8 : 11;
-  const BOAT_HEIGHT = 170;          // bigger base size
-  const SPEED_X=0.10, BOB_AMPL=12, BOB_FREQ=0.0016;
+  const BOAT_HEIGHT = 170;                 // bigger base size
+  // Responsive per-frame speed (~27–60 px/sec @ 60fps)
+  const SPEED_X = Math.max(0.18, Math.min(0.4, innerWidth * 0.00025));
+  const BOB_AMPL=12, BOB_FREQ=0.0016;
   const COLLISION_PAD = 15, PUSH_STRENGTH = 0.02, FRICTION = 0.34;
 
   // Perspective scaling range (top -> bottom)
-  const PERSPECTIVE_MIN = 0.60;     // size at top
-  const PERSPECTIVE_MAX = 1.35;     // size at bottom
+  const PERSPECTIVE_MIN = 0.60;           // size at top
+  const PERSPECTIVE_MAX = 1.35;           // size at bottom
 
-  // Holds fetched approved doubts and session tracking
+  // Doubts pool
   let APPROVED_DOUBTS = [];
   let USED_DOUBT_IDS = new Set();
   let SHUFFLED_DOUBTS = [];
@@ -436,41 +330,27 @@
     }
     return shuffled;
   }
-
   function initializeDoubtPool() {
     SHUFFLED_DOUBTS = shuffleArray(APPROVED_DOUBTS);
     USED_DOUBT_IDS.clear();
     console.log('Initialized shuffled doubt pool:', SHUFFLED_DOUBTS.length, 'doubts');
   }
-
   function pickRandomDoubt() {
-    if (APPROVED_DOUBTS.length === 0) {
-      return { text: "…", date: new Date().toISOString().slice(0,10), id: "placeholder" };
-    }
-    if (USED_DOUBT_IDS.size >= APPROVED_DOUBTS.length) {
-      console.log('All doubts used, reshuffling pool');
-      initializeDoubtPool();
-    }
+    if (APPROVED_DOUBTS.length === 0) return { text: "…", date: new Date().toISOString().slice(0,10), id: "placeholder" };
+    if (USED_DOUBT_IDS.size >= APPROVED_DOUBTS.length) { console.log('All doubts used, reshuffling pool'); initializeDoubtPool(); }
     let selected = null;
-    for (const d of SHUFFLED_DOUBTS) {
-      if (!USED_DOUBT_IDS.has(d.id)) { selected = d; USED_DOUBT_IDS.add(d.id); break; }
-    }
+    for (const d of SHUFFLED_DOUBTS) { if (!USED_DOUBT_IDS.has(d.id)) { selected = d; USED_DOUBT_IDS.add(d.id); break; } }
     if (!selected) { selected = SHUFFLED_DOUBTS[0]; USED_DOUBT_IDS.add(selected.id); }
     return selected;
   }
-
   async function refreshDoubtPool() {
     try {
       const fresh = await fetchApprovedDoubts(600);
       if (fresh.length > 0) {
         const old = APPROVED_DOUBTS.length;
         APPROVED_DOUBTS = fresh;
-        if (fresh.length > old * 1.2) {
-          initializeDoubtPool();
-          console.log('Refreshed and reshuffled doubt pool:', APPROVED_DOUBTS.length, 'doubts');
-        } else {
-          console.log('Refreshed doubt pool:', APPROVED_DOUBTS.length, 'doubts');
-        }
+        if (fresh.length > old * 1.2) { initializeDoubtPool(); console.log('Refreshed and reshuffled doubt pool:', APPROVED_DOUBTS.length); }
+        else { console.log('Refreshed doubt pool:', APPROVED_DOUBTS.length); }
       }
     } catch (err) { console.error('Failed to refresh doubts:', err); }
   }
@@ -479,10 +359,13 @@
     constructor(){ this.reset(true); }
     reset(initial = false) {
       this.yBase = Math.random() * H * 0.75 + H * 0.1;
-      this.x = initial ? Math.random() * W : -(this._w || 160) - 30;
+      // QUICKER RESPAWN: slightly off-screen left (not way out)
+      this.x = initial ? Math.random() * W : -((this._w || 160) * 0.35);
+
       this.phase = Math.random() * Math.PI * 2;
       this.alpha = 0.95;
       this.doubt = pickRandomDoubt();
+
       this._h = BOAT_HEIGHT;
       this._w = BOAT_HEIGHT * 1.8;
       this.vx = 0; this.vy = 0;
@@ -530,7 +413,7 @@
       const vW=boatVideo.videoWidth||640, vH=boatVideo.videoHeight||360;
       const srcW=vW*CROP.w, srcH=vH*CROP.h, srcX=vW*CROP.x, srcY=vH*CROP.y;
 
-      // Perspective: map y (0..H) -> scale (min..max)
+      // Perspective: y -> scale
       const t = Math.max(0, Math.min(1, this.y / H)); // 0 top, 1 bottom
       const scale = PERSPECTIVE_MIN + (PERSPECTIVE_MAX - PERSPECTIVE_MIN) * t;
 
@@ -538,16 +421,17 @@
       const displayW = displayH * (srcW/srcH); // maintain ratio
       this._w = displayW; this._h = displayH;
 
-      // Opacity falls off with distance (smaller boats lighter)
+      // Opacity by depth (smaller boats lighter)
       let a = this.alpha;
       if(this.morphingOut) a = 0;
-      else a *= (0.35 + 0.65 * t); // 0.35 at top -> ~1 at bottom
+      else a *= (0.35 + 0.65 * t); // 0.35 at top → ~1 at bottom
 
       if(a <= 0.01) return;
 
       ctx.save();
       ctx.translate(this.x, this.y);
 
+      // Highlight
       if(this.highlightUntil){
         const remaining = this.highlightUntil - performance.now();
         if(remaining > 0){
@@ -571,8 +455,7 @@
       ctx.globalAlpha = a;
 
       // iOS blend mode fix
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       if(isIOS) {
         const dpr = window.devicePixelRatio || 1;
         const off = document.createElement('canvas');
@@ -593,38 +476,30 @@
       ctx.restore();
     }
     hit(mx,my){ 
-      return mx>=this.x-this._w/2 && mx<=this.x+this._w/2 && 
-             my>=this.y-this._h/2 && my<=this.y+this._h/2; 
+      return mx>=this.x-this._w/2 && mx<=this.x+this._w/2 && my>=this.y-this._h/2 && my<=this.y+this._h/2; 
     }
   }
 
   // Will be filled after Supabase fetch
   let boats = [];
 
-  // Periodic refresh every 5 minutes
+  // Refresh doubts every 5 minutes
   setInterval(refreshDoubtPool, 5 * 60 * 1000);
 
-  /* ===== Unfolding NOTE factory (boat + composer) ===== */
+  /* ===== Note factory ===== */
   let overlay=null, noteEl=null, noteBoat=null, noteClosing=false, composerOpen=false;
-
   const NO_DRAG_SELECTOR = 'textarea, input, select, button, a, [contenteditable="true"], .compose-field, .pill-btn, .note-close';
 
   function makeDraggable(el, size){
     let dragging=false, startX=0, startY=0, startLeft=0, startTop=0;
     const clamp=(v,min,max)=>Math.max(min, Math.min(max, v));
-
     el.addEventListener('pointerdown', (e)=>{
       if(e.button && e.button !== 0) return;
       if (e.target.closest(NO_DRAG_SELECTOR)) return;
-      dragging = true;
-      el.classList.add('dragging');
-      el.setPointerCapture(e.pointerId);
-      startX = e.clientX; startY = e.clientY;
-      startLeft = parseFloat(el.style.left)||0;
-      startTop  = parseFloat(el.style.top)||0;
+      dragging = true; el.classList.add('dragging'); el.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY; startLeft = parseFloat(el.style.left)||0; startTop  = parseFloat(el.style.top)||0;
       e.preventDefault();
     });
-
     el.addEventListener('pointermove', (e)=>{
       if(!dragging) return;
       const dx = e.clientX - startX, dy = e.clientY - startY;
@@ -632,16 +507,9 @@
       const maxL = innerWidth  - size, maxT = innerHeight - size;
       nextLeft = clamp(nextLeft, 0, Math.max(0, maxL));
       nextTop  = clamp(nextTop , 0, Math.max(0, maxT));
-      el.style.left = nextLeft + 'px';
-      el.style.top  = nextTop  + 'px';
+      el.style.left = nextLeft + 'px'; el.style.top  = nextTop  + 'px';
     });
-
-    const endDrag=(e)=>{
-      if(!dragging) return;
-      dragging = false;
-      el.classList.remove('dragging');
-      try{ el.releasePointerCapture(e.pointerId); }catch(_){}
-    };
+    const endDrag=(e)=>{ if(!dragging) return; dragging = false; el.classList.remove('dragging'); try{ el.releasePointerCapture(e.pointerId); }catch(_){}}; 
     el.addEventListener('pointerup', endDrag);
     el.addEventListener('pointercancel', endDrag);
     el.addEventListener('lostpointercapture', ()=>{ dragging=false; el.classList.remove('dragging'); });
@@ -681,11 +549,7 @@
     stage.append(makeBox('one'), makeBox('two'), makeBox('thr'), makeBox('fou'));
 
     const content = document.createElement('div'); content.className='note-content';
-    content.innerHTML = `
-      <div class="note-title">${title}</div>
-      ${bodyHTML}
-      ${metaHTML||''}
-    `;
+    content.innerHTML = `<div class="note-title">${title}</div>${bodyHTML}${metaHTML||''}`;
     noteEl.appendChild(content);
 
     const closeBtn = document.createElement('button');
@@ -703,14 +567,9 @@
 
     overlay.appendChild(noteEl);
     noteBoat = boat || null;
-
     makeDraggable(noteEl, size);
 
-    requestAnimationFrame(()=>{
-      noteEl.style.transform = 'scale(1) translateZ(0)';
-      setTimeout(()=> noteEl.classList.add('unfold'), 140);
-    });
-
+    requestAnimationFrame(()=>{ noteEl.style.transform = 'scale(1) translateZ(0)'; setTimeout(()=> noteEl.classList.add('unfold'), 140); });
     overlay.querySelector('.overlay-close').addEventListener('click', closeNote, {once:true});
   }
 
@@ -719,28 +578,19 @@
     noteClosing = true;
 
     if(noteBoat){
-      noteBoat.morphingIn = false;
-      // let the boat keep floating
+      noteBoat.morphingIn = false; // let it keep floating
     }
 
     noteEl.classList.add('closing');
 
-    const FINISH = ()=> {
-      overlay?.remove(); overlay=null; noteEl=null;
-      noteBoat = null; noteClosing = false; composerOpen = false;
-    };
-
+    const FINISH = ()=> { overlay?.remove(); overlay=null; noteEl=null; noteBoat = null; noteClosing = false; composerOpen = false; };
     let done=false;
-    noteEl.addEventListener('transitionend', (e)=>{
-      if(done || e.propertyName !== 'opacity') return;
-      done=true; FINISH();
-    }, {once:true});
+    noteEl.addEventListener('transitionend', (e)=>{ if(done || e.propertyName !== 'opacity') return; done=true; FINISH(); }, {once:true});
     setTimeout(()=>{ if(!done) FINISH(); }, 280);
   }
 
   function openNoteFromBoat(boat){
-    boat.morphingIn = true;
-    boat.morphT0 = performance.now();
+    boat.morphingIn = true; boat.morphT0 = performance.now();
     const meta = `<div class="note-meta">${new Date(boat.doubt.date+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</div>`;
     const body = `<div class="note-text">${boat.doubt.text}</div>`;
     const maxSize = Math.min(350, window.innerWidth * 0.9);
@@ -762,15 +612,7 @@
       </div>
     `;
 
-    createNote({
-      x: innerWidth / 2,
-      y: innerHeight / 2,
-      title: 'Release your doubt',
-      bodyHTML: body,
-      metaHTML: '',
-      boat: null,
-      startScale: 0.72
-    });
+    createNote({ x: innerWidth / 2, y: innerHeight / 2, title: 'Release your doubt', bodyHTML: body, metaHTML: '', boat: null, startScale: 0.72 });
 
     const input = document.getElementById('doubtInput');
     const count = document.getElementById('charCount');
@@ -791,8 +633,7 @@
         const { id, created_at, doubt } = await postDoubtToN8N(text);
         const b = new Boat();
         b.doubt = { text: doubt, date: (created_at || new Date().toISOString()).slice(0, 10), id };
-        b.x = innerWidth / 2; b.yBase = innerHeight / 2; b.phase = 0;
-        b.highlightUntil = performance.now() + 6000;
+        b.x = innerWidth / 2; b.yBase = innerHeight / 2; b.phase = 0; b.highlightUntil = performance.now() + 6000;
         boats.push(b);
         closeNote();
       } catch (err) {
@@ -804,9 +645,7 @@
     }
 
     submit.addEventListener('click', doRelease);
-    input.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doRelease(); }
-    });
+    input.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doRelease(); } });
   }
 
   /* Loop */
@@ -825,14 +664,11 @@
     for(const b of boats){ if(b.hit(mx,my) && !b.morphingOut){ overBoat = true; break; } }
     canvas.style.cursor = overBoat ? 'pointer' : 'default';
   });
-  
   canvas.addEventListener('click', e=>{
     if(composerOpen) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    for(const b of boats){ 
-      if(b.hit(mx,my)){ if(b.morphingOut) return; openNoteFromBoat(b); break; } 
-    }
+    for(const b of boats){ if(b.hit(mx,my)){ if(b.morphingOut) return; openNoteFromBoat(b); break; } }
   });
   releaseBtn.addEventListener('click', openComposerNote);
   addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeNote(); } });
