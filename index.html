@@ -45,7 +45,91 @@
     opacity: 0;
     pointer-events: none;
   }
-  
+
+  #loader-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+
+  #loader-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+  }
+
+  .loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+  }
+
+  .loader-label {
+    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(236, 236, 237, 0.75);
+  }
+
+  .dot-gathering {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: transparent;
+    margin: -1px 0;
+    filter: blur(2px);
+  }
+
+  .dot-gathering::before,
+  .dot-gathering::after {
+    content: "";
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    left: -50px;
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: transparent;
+    opacity: 0;
+    filter: blur(2px);
+    animation: dot-gathering 2s infinite ease-in;
+  }
+
+  .dot-gathering::after {
+    animation-delay: 0.5s;
+  }
+
+  @keyframes dot-gathering {
+    0% {
+      opacity: 0;
+      transform: translateX(0);
+    }
+    35%,
+    60% {
+      opacity: 1;
+      transform: translateX(50px);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(100px);
+    }
+  }
+
   .intro-content {
     display: flex;
     flex-direction: column;
@@ -467,6 +551,14 @@ header.ripple span.figtree-adrift {
     </div>
   </div>
 
+  <!-- Loader overlay -->
+  <div id="loader-overlay" aria-hidden="true">
+    <div class="loader-content" role="status" aria-live="polite">
+      <span class="loader-label">Gathering boats…</span>
+      <div class="dot-gathering" aria-hidden="true"></div>
+    </div>
+  </div>
+
   <!-- Main content wrapper -->
   <div class="main-content">
     <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
@@ -495,6 +587,44 @@ header.ripple span.figtree-adrift {
   const mainContent = document.querySelector('.main-content');
   const enterBtn = document.getElementById('enterBtn');
   const doubtCounter = document.getElementById('doubt-counter');
+  const loaderOverlay = document.getElementById('loader-overlay');
+  let loaderTimeoutId = null;
+  let boatsReady = false;
+  let videoReady = false;
+
+  function showLoader() {
+    if (!loaderOverlay) return;
+    loaderOverlay.classList.add('visible');
+    loaderOverlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function hideLoader() {
+    if (!loaderOverlay) return;
+    clearTimeout(loaderTimeoutId);
+    loaderTimeoutId = null;
+    loaderOverlay.classList.remove('visible');
+    loaderOverlay.setAttribute('aria-hidden', 'true');
+  }
+
+  function maybeHideLoader() {
+    if (boatsReady && videoReady) {
+      hideLoader();
+    }
+  }
+
+  function scheduleLoaderCheck() {
+    if (!loaderOverlay) return;
+    if (boatsReady && videoReady) {
+      hideLoader();
+      return;
+    }
+    clearTimeout(loaderTimeoutId);
+    loaderTimeoutId = window.setTimeout(() => {
+      if (!boatsReady || !videoReady) {
+        showLoader();
+      }
+    }, 1000);
+  }
 
   function revealMainContent() {
     if (!introOverlay || introOverlay.classList.contains('fade-out')) return;
@@ -514,6 +644,7 @@ header.ripple span.figtree-adrift {
     enterBtn.addEventListener('click', () => {
       enterBtn.disabled = true;
       revealMainContent();
+      scheduleLoaderCheck();
     });
   }
 
@@ -636,13 +767,13 @@ const DEFAULT_VOL = 0.28;
 function startAudio(){ bgAudio.volume = DEFAULT_VOL; bgAudio.play().then(()=> updateSoundUI(true)).catch(()=>{}); }
 function updateSoundUI(on){ soundToggle.classList.toggle('active', !!on); soundToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); soundToggle.textContent = on ? 'Sound: On' : 'Sound: Off'; }
 
-let videoReady = false;
 let videoRestartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 2;
 
-boatVideo.addEventListener('canplay', () => { 
-  videoReady = true; 
-  if(boatVideo.paused) boatVideo.play().catch(() => {}); 
+boatVideo.addEventListener('canplay', () => {
+  videoReady = true;
+  if(boatVideo.paused) boatVideo.play().catch(() => {});
+  maybeHideLoader();
 }, {once: true});
 
 function checkAndRestartVideo() {
@@ -1222,6 +1353,8 @@ try{
 } finally {
   // Seed boats only after we have something to show
   boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+  boatsReady = true;
+  maybeHideLoader();
 }
 
 // Update counter on load
