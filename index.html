@@ -302,7 +302,12 @@
     box-shadow: 0 0 0 1px rgba(255, 180, 60, 0.15);
   }
   .compose-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:12px; color:#4c5562; }
-  .compose-disclaimer{ margin-top:12px; font-size:11px; color:rgba(16,21,28,0.55); text-align:right; }
+ .compose-disclaimer {
+  font-size: 11px;
+  color: rgba(16,21,28,0.55);
+  text-align: center;
+  margin-top: 64px;
+}
   .pill-btn{ padding:12px 18px; border-radius:999px; border:1px solid rgba(0,0,0,.12); background:#0f172a; color:#fff; cursor:pointer; }
   .pill-btn:focus-visible {
     outline: 2px solid rgba(255, 180, 60, 0.5);
@@ -376,7 +381,9 @@ header.ripple span.figtree-adrift {
   }
 
   #intro-overlay .cta-btn {
-    width: 100%;
+    width: auto;
+    padding: 20px 28px;
+    align-self: center;
   }
   
   .note-content {
@@ -455,7 +462,7 @@ header.ripple span.figtree-adrift {
  <div id="intro-overlay">
     <div class="intro-content">
       <div id="doubt-counter" aria-live="polite" data-start-value="0">0 doubts released</div>
-      <p id="intro-text">Doubt is universal, yet deeply personal. It comes and goes like waves, like passing weather. Never the sky, never the sea. And when it fades, the stillness of being remains.</p>
+      <p id="intro-text">Adrift is a quiet space where doubts become paper boats and drift together across a shared sea.</p>
       <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">Enter</button>
     </div>
   </div>
