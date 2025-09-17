@@ -302,6 +302,7 @@
     box-shadow: 0 0 0 1px rgba(255, 180, 60, 0.15);
   }
   .compose-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:12px; color:#4c5562; }
+  .compose-disclaimer{ margin-top:12px; font-size:11px; color:rgba(16,21,28,0.55); text-align:right; }
   .pill-btn{ padding:12px 18px; border-radius:999px; border:1px solid rgba(0,0,0,.12); background:#0f172a; color:#fff; cursor:pointer; }
   .pill-btn:focus-visible {
     outline: 2px solid rgba(255, 180, 60, 0.5);
@@ -1074,6 +1075,7 @@ function pickRandomDoubt() {
         <div><span id="charCount">0</span>/200</div>
         <button class="pill-btn" id="submitDoubt" type="button">Release</button>
       </div>
+      <p class="compose-disclaimer">Offensive content will be flagged and removed.</p>
     `;
 
     createNote({
