@@ -825,16 +825,33 @@ setTimeout(() => {
   }
 }, 15000);
 
-const ensurePlay = () => { 
+/* ==== CHANGED: don’t start audio when clicking Enter ==== */
+let audioStarted = false;
+function ensurePlay(e){
+  if (audioStarted) return;
+
+  // Ignore interactions on the intro overlay (e.g., clicking "Enter")
+  const overlay = document.getElementById('intro-overlay');
+  if (overlay && e && overlay.contains(e.target)) {
+    return; // do nothing; keep listeners for later interactions
+  }
+
   if (!videoReady) {
     console.log('User interaction - forcing video restart');
     checkAndRestartVideo();
   }
-  boatVideo.play().catch(() => {}); 
-  startAudio(); 
-};
-addEventListener('pointerdown', ensurePlay, {once:true}); 
-addEventListener('keydown', ensurePlay, {once:true});
+  boatVideo.play().catch(() => {});
+  startAudio();
+  audioStarted = true;
+
+  // Clean up listeners after first successful start outside the intro
+  removeEventListener('pointerdown', ensurePlay);
+  removeEventListener('keydown', ensurePlay);
+}
+addEventListener('pointerdown', ensurePlay);
+addEventListener('keydown', ensurePlay);
+/* ==== end change ==== */
+
 soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { bgAudio.pause(); updateSoundUI(false); } });
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && !bgAudio.paused){ bgAudio.play().catch(()=>{}); } });
 
@@ -1060,6 +1077,7 @@ function pickRandomDoubt() {
     }
     hit(mx,my){ 
       return mx>=this.x-this._w/2 && mx<=this.x+this._w/2 && 
+             my>=this.y-this._h/2 && mx!=null && my!=null && 
              my>=this.y-this._h/2 && my<=this.y+this._h/2; 
     }
   }
