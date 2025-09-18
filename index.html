@@ -7,7 +7,41 @@
 
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>adrift</title>
+
+<!-- SEO + AEO Metadata -->
+<title>Adrift — A Quiet Place to Share or Read Anonymous Doubts</title>
+<meta name="description" content="Adrift is a quiet digital space where people can anonymously share doubts as paper boats, or read others’ doubts drifting in and out of view.">
+<meta name="keywords" content="anonymous doubts, share doubts, read doubts, paper boats, quiet space, uncertainty">
+
+<!-- Open Graph -->
+<meta property="og:title" content="Adrift — A Quiet Place to Share or Read Anonymous Doubts">
+<meta property="og:description" content="A quiet place to anonymously share doubts as paper boats, or read others’ drifting doubts.">
+<meta property="og:url" content="https://adrift.site/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://adrift.site/adrift-preview.jpg"> <!-- Replace with your actual image -->
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Adrift — A Quiet Place to Share or Read Anonymous Doubts">
+<meta name="twitter:description" content="Adrift is a quiet space where doubts drift as paper boats — shared anonymously, read quietly.">
+<meta name="twitter:image" content="https://adrift.site/adrift-preview.jpg"> <!-- Replace -->
+
+<!-- Schema.org (Structured Data for AEO) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Adrift",
+  "url": "https://adrift.site/",
+  "description": "Adrift is a quiet place where people anonymously submit doubts that become paper boats, or read anonymous doubts from others as they drift in and out of view.",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://adrift.site/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
 
 <!-- Favicons -->
 <link rel="icon" type="image/svg+xml" sizes="16x16" href="favicon-adrift-16x16.svg">
@@ -45,91 +79,7 @@
     opacity: 0;
     pointer-events: none;
   }
-
-  #loader-overlay {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 9998;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 0.35s ease;
-  }
-
-  #loader-overlay.visible {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: all;
-  }
-
-  .loader-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-    text-align: center;
-  }
-
-  .loader-label {
-    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
-    font-size: 14px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(236, 236, 237, 0.75);
-  }
-
-  .dot-gathering {
-    position: relative;
-    width: 12px;
-    height: 12px;
-    border-radius: 6px;
-    background-color: #ffffff;
-    color: transparent;
-    margin: -1px 0;
-    filter: blur(2px);
-  }
-
-  .dot-gathering::before,
-  .dot-gathering::after {
-    content: "";
-    display: inline-block;
-    position: absolute;
-    top: 0;
-    left: -50px;
-    width: 12px;
-    height: 12px;
-    border-radius: 6px;
-    background-color: #ffffff;
-    color: transparent;
-    opacity: 0;
-    filter: blur(2px);
-    animation: dot-gathering 2s infinite ease-in;
-  }
-
-  .dot-gathering::after {
-    animation-delay: 0.5s;
-  }
-
-  @keyframes dot-gathering {
-    0% {
-      opacity: 0;
-      transform: translateX(0);
-    }
-    35%,
-    60% {
-      opacity: 1;
-      transform: translateX(50px);
-    }
-    100% {
-      opacity: 0;
-      transform: translateX(100px);
-    }
-  }
-
+  
   .intro-content {
     display: flex;
     flex-direction: column;
@@ -390,7 +340,7 @@
   font-size: 11px;
   color: rgba(16,21,28,0.55);
   text-align: center;
-  margin-top: 64px;
+  margin-top: 14px;
 }
   .pill-btn{ padding:12px 18px; border-radius:999px; border:1px solid rgba(0,0,0,.12); background:#0f172a; color:#fff; cursor:pointer; }
   .pill-btn:focus-visible {
@@ -446,6 +396,18 @@ header.ripple span.figtree-adrift {
   font-weight: 700;
 }
 /* --- end added --- */
+
+/* === ADDED: loading dots for Enter button === */
+.loading-dots { display:inline-flex; gap:.25em; margin-left:.4em; vertical-align:baseline; }
+.loading-dots span { width:.35em; height:.35em; border-radius:50%; background: currentColor; opacity:.2; animation: dotBlink 1s infinite; }
+.loading-dots span:nth-child(2){ animation-delay:.15s; }
+.loading-dots span:nth-child(3){ animation-delay:.30s; }
+@keyframes dotBlink {
+  0%, 20% { opacity:.2; transform: translateY(0); }
+  50%     { opacity:1;  transform: translateY(-1px); }
+  100%    { opacity:.2; transform: translateY(0); }
+}
+/* === end loading dots === */
 
 /* Mobile responsive styles */
 @media (max-width: 640px) {
@@ -551,14 +513,6 @@ header.ripple span.figtree-adrift {
     </div>
   </div>
 
-  <!-- Loader overlay -->
-  <div id="loader-overlay" aria-hidden="true">
-    <div class="loader-content" role="status" aria-live="polite">
-      <span class="loader-label">Gathering boats…</span>
-      <div class="dot-gathering" aria-hidden="true"></div>
-    </div>
-  </div>
-
   <!-- Main content wrapper -->
   <div class="main-content">
     <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
@@ -587,44 +541,102 @@ header.ripple span.figtree-adrift {
   const mainContent = document.querySelector('.main-content');
   const enterBtn = document.getElementById('enterBtn');
   const doubtCounter = document.getElementById('doubt-counter');
-  const loaderOverlay = document.getElementById('loader-overlay');
-  let loaderTimeoutId = null;
-  let boatsReady = false;
-  let videoReady = false;
 
-  function showLoader() {
-    if (!loaderOverlay) return;
-    loaderOverlay.classList.add('visible');
-    loaderOverlay.setAttribute('aria-hidden', 'false');
+  /* === ADDED: preload helpers and loading UI === */
+  function preloadVideo(videoEl){
+    return new Promise((resolve) => {
+      if (!videoEl) return resolve();
+      const done = () => resolve();
+      if (videoEl.readyState >= 2) return resolve(); // HAVE_CURRENT_DATA
+      videoEl.addEventListener('canplay', done, { once:true });
+      try {
+        videoEl.load();
+        // muted video can play without gesture; prime a frame then pause
+        videoEl.play().then(()=>{ videoEl.pause(); }).catch(()=>{ /* ignore */ });
+      } catch(_) {}
+    });
   }
 
-  function hideLoader() {
-    if (!loaderOverlay) return;
-    clearTimeout(loaderTimeoutId);
-    loaderTimeoutId = null;
-    loaderOverlay.classList.remove('visible');
-    loaderOverlay.setAttribute('aria-hidden', 'true');
+  function preloadAudio(audioEl){
+    return new Promise((resolve) => {
+      if (!audioEl) return resolve();
+      const done = () => resolve();
+      if (audioEl.readyState >= 2) return resolve();
+      audioEl.addEventListener('canplaythrough', done, { once:true });
+      try { audioEl.load(); } catch(_) {}
+      // do not play; just buffer
+    });
   }
 
-  function maybeHideLoader() {
-    if (boatsReady && videoReady) {
-      hideLoader();
-    }
+  function preloadFonts(){
+    if (document.fonts && document.fonts.ready) return document.fonts.ready.catch(()=>{});
+    return Promise.resolve();
   }
 
-  function scheduleLoaderCheck() {
-    if (!loaderOverlay) return;
-    if (boatsReady && videoReady) {
-      hideLoader();
-      return;
-    }
-    clearTimeout(loaderTimeoutId);
-    loaderTimeoutId = window.setTimeout(() => {
-      if (!boatsReady || !videoReady) {
-        showLoader();
+  function preloadScriptAlreadyInPage(src){
+    const tag = [...document.scripts].find(s => (s.src||'').includes(src));
+    if (!tag) return Promise.resolve();
+    if (tag.dataset.loaded === '1' || tag.dataset.error === '1') return Promise.resolve();
+    return new Promise((resolve)=> {
+      tag.addEventListener('load', ()=>{ tag.dataset.loaded='1'; resolve(); }, { once:true });
+      tag.addEventListener('error',()=>{ tag.dataset.error='1'; resolve(); }, { once:true });
+    });
+  }
+
+  async function preloadData(){
+    try{
+      // Use existing fetchers so first frame has content
+      APPROVED_DOUBTS = await fetchApprovedDoubts(600);
+      if (APPROVED_DOUBTS.length === 0) {
+        APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
       }
-    }, 1000);
+      initializeDoubtPool();
+      // Seed boats so render is immediate
+      boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+      // Warm up counter silently
+      const count = await fetchTotalDoubts().catch(()=>0);
+      if (doubtCounter) {
+        doubtCounter.style.visibility = 'visible';
+        if (count > 0) animateDoubtCounter(doubtCounter, count);
+        else doubtCounter.textContent = '0 doubts released';
+      }
+    } catch(err){
+      console.error('Data preload failed:', err);
+      if (!APPROVED_DOUBTS?.length) {
+        APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
+        initializeDoubtPool();
+        boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+      }
+    }
   }
+
+  async function preloadAll(){
+    const videoP = preloadVideo(document.getElementById('boatVideo'));
+    const audioP = preloadAudio(document.getElementById('bgAudio'));
+    const fontsP = preloadFonts();
+    const rainP  = preloadScriptAlreadyInPage('rain.js');
+    const dataP  = preloadData();
+
+    // Safety cap so we don’t hang forever waiting on a stubborn canplaythrough
+    const cap = new Promise(res => setTimeout(res, 7000));
+
+    await Promise.race([
+      Promise.all([videoP, audioP, fontsP, rainP, dataP]),
+      cap
+    ]);
+  }
+
+  function setLoadingUI(isLoading){
+    if (!enterBtn) return;
+    if (isLoading){
+      enterBtn.disabled = true;
+      enterBtn.innerHTML = `Loading<span class="loading-dots"><span></span><span></span><span></span></span>`;
+    } else {
+      enterBtn.disabled = false;
+      enterBtn.textContent = 'Enter';
+    }
+  }
+  /* === end preload helpers === */
 
   function revealMainContent() {
     if (!introOverlay || introOverlay.classList.contains('fade-out')) return;
@@ -641,10 +653,15 @@ header.ripple span.figtree-adrift {
   }
 
   if (enterBtn) {
-    enterBtn.addEventListener('click', () => {
-      enterBtn.disabled = true;
-      revealMainContent();
-      scheduleLoaderCheck();
+    enterBtn.addEventListener('click', async () => {
+      if (enterBtn.disabled) return;
+      setLoadingUI(true);
+      try {
+        await preloadAll();   // preload video, audio (buffer only), fonts, rain.js (best effort), data + seed boats
+      } finally {
+        setLoadingUI(false);
+        revealMainContent();  // only after preload finishes (or the 7s cap)
+      }
     });
   }
 
@@ -767,13 +784,13 @@ const DEFAULT_VOL = 0.28;
 function startAudio(){ bgAudio.volume = DEFAULT_VOL; bgAudio.play().then(()=> updateSoundUI(true)).catch(()=>{}); }
 function updateSoundUI(on){ soundToggle.classList.toggle('active', !!on); soundToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); soundToggle.textContent = on ? 'Sound: On' : 'Sound: Off'; }
 
+let videoReady = false;
 let videoRestartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 2;
 
-boatVideo.addEventListener('canplay', () => {
-  videoReady = true;
-  if(boatVideo.paused) boatVideo.play().catch(() => {});
-  maybeHideLoader();
+boatVideo.addEventListener('canplay', () => { 
+  videoReady = true; 
+  if(boatVideo.paused) boatVideo.play().catch(() => {}); 
 }, {once: true});
 
 function checkAndRestartVideo() {
@@ -1213,7 +1230,7 @@ function pickRandomDoubt() {
         <div><span id="charCount">0</span>/200</div>
         <button class="pill-btn" id="submitDoubt" type="button">Release</button>
       </div>
-      <p class="compose-disclaimer">Offensive content will be flagged and removed.</p>
+      <p class="compose-disclaimer">Offensive or disruptive posts are blocked.</p>
     `;
 
     createNote({
@@ -1353,8 +1370,6 @@ try{
 } finally {
   // Seed boats only after we have something to show
   boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
-  boatsReady = true;
-  maybeHideLoader();
 }
 
 // Update counter on load
