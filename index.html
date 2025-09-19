@@ -597,9 +597,14 @@ header.ripple span.figtree-adrift {
       const count = await fetchTotalDoubts().catch(()=>0);
       if (doubtCounter) {
         doubtCounter.style.visibility = 'visible';
-        if (count > 0) animateDoubtCounter(doubtCounter, count);
-        else doubtCounter.textContent = '0 doubts released';
+        if (count > 0) {
+          animateDoubtCounter(doubtCounter, count);
+        } else {
+          doubtCounter.textContent = '0 doubts released';
+          doubtCounter.dataset.startValue = '0';
+        }
       }
+      return count;
     } catch(err){
       console.error('Data preload failed:', err);
       if (!APPROVED_DOUBTS?.length) {
@@ -607,6 +612,11 @@ header.ripple span.figtree-adrift {
         initializeDoubtPool();
         boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
       }
+      if (doubtCounter) {
+        doubtCounter.textContent = '0 doubts released';
+        doubtCounter.dataset.startValue = '0';
+      }
+      return 0;
     }
   }
 
@@ -624,6 +634,24 @@ header.ripple span.figtree-adrift {
       Promise.all([videoP, audioP, fontsP, rainP, dataP]),
       cap
     ]);
+  }
+
+  let preloadAllPromise = null;
+  let preloadAllDone = false;
+
+  function ensurePreloadAll(){
+    if (!preloadAllPromise) {
+      preloadAllDone = false;
+      preloadAllPromise = preloadAll().then((value) => {
+        preloadAllDone = true;
+        return value;
+      }).catch((err) => {
+        preloadAllDone = false;
+        preloadAllPromise = null;
+        throw err;
+      });
+    }
+    return preloadAllPromise;
   }
 
   function setLoadingUI(isLoading){
@@ -655,9 +683,14 @@ header.ripple span.figtree-adrift {
   if (enterBtn) {
     enterBtn.addEventListener('click', async () => {
       if (enterBtn.disabled) return;
-      setLoadingUI(true);
+      const preloadPromise = ensurePreloadAll();
+      if (!preloadAllDone) {
+        setLoadingUI(true);
+      }
       try {
-        await preloadAll();   // preload video, audio (buffer only), fonts, rain.js (best effort), data + seed boats
+        await preloadPromise;   // wait only for whatever is still pending
+      } catch (err) {
+        console.error('Preload failed:', err);
       } finally {
         setLoadingUI(false);
         revealMainContent();  // only after preload finishes (or the 7s cap)
@@ -1372,43 +1405,20 @@ function pickRandomDoubt() {
   releaseBtn.addEventListener('click', openComposerNote);
   addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeNote(); } });
 
- /* =========
-     Boot flow
-     ========= */
-  (async function init(){
-try{
-  APPROVED_DOUBTS = await fetchApprovedDoubts(600);
-  if (APPROVED_DOUBTS.length === 0) {
-    console.warn('No approved doubts found; using placeholder.');
-    APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
-  }
-  
-  // Initialize the shuffled pool after loading doubts
-  initializeDoubtPool();
-  
-} catch(err){
-  console.error(err);
-  // Soft fallback if Supabase is unreachable
-  APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
-  initializeDoubtPool();
-} finally {
-  // Seed boats only after we have something to show
-  boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
-}
+  /* =========
+      Boot flow
+      ========= */
+  const startPreload = () => {
+    ensurePreloadAll().catch((err) => {
+      console.error('Preload failed:', err);
+    });
+  };
 
-// Update counter on load
-fetchTotalDoubts().then(count => {
-  if (!doubtCounter) return;
-  doubtCounter.style.visibility = 'visible';
-  if (count > 0) {
-    animateDoubtCounter(doubtCounter, count);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startPreload, { once: true });
   } else {
-    doubtCounter.textContent = '0 doubts released';
+    startPreload();
   }
-}).catch(() => {
-  if (doubtCounter) doubtCounter.style.visibility = 'hidden';
-});
-})();
 </script>
 
 
