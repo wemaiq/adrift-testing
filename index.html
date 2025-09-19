@@ -592,7 +592,25 @@ header.ripple span.figtree-adrift {
       }
       initializeDoubtPool();
       // Seed boats so render is immediate
-      boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+      // Create boats with guaranteed spread
+boats = [];
+const rows = 3;
+const cols = Math.ceil(BOAT_COUNT / rows);
+
+for(let i = 0; i < BOAT_COUNT; i++) {
+  const boat = new Boat();
+  const row = i % rows;
+  const col = Math.floor(i / rows);
+  
+  // Stagger columns so boats aren't in a perfect grid
+  const stagger = (row % 2) * (W / (cols * 2));
+  
+  boat.x = (col * W / cols) + (W / (cols * 2)) + stagger + (Math.random() - 0.5) * 40;
+  boat.yBase = H * 0.15 + (row * H * 0.6 / rows) + (Math.random() - 0.5) * 30;
+  boat.phase = Math.random() * Math.PI * 2;
+  
+  boats.push(boat);
+}
       // Warm up counter silently
       const count = await fetchTotalDoubts().catch(()=>0);
       if (doubtCounter) {
@@ -1391,9 +1409,24 @@ try{
   // Soft fallback if Supabase is unreachable
   APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
   initializeDoubtPool();
-} finally {
-  // Seed boats only after we have something to show
-  boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+// Create boats with guaranteed spread
+boats = [];
+const rows = 3;
+const cols = Math.ceil(BOAT_COUNT / rows);
+
+for(let i = 0; i < BOAT_COUNT; i++) {
+  const boat = new Boat();
+  const row = i % rows;
+  const col = Math.floor(i / rows);
+  
+  // Stagger columns so boats aren't in a perfect grid
+  const stagger = (row % 2) * (W / (cols * 2));
+  
+  boat.x = (col * W / cols) + (W / (cols * 2)) + stagger + (Math.random() - 0.5) * 40;
+  boat.yBase = H * 0.15 + (row * H * 0.6 / rows) + (Math.random() - 0.5) * 30;
+  boat.phase = Math.random() * Math.PI * 2;
+  
+  boats.push(boat);
 }
 
 // Update counter on load
