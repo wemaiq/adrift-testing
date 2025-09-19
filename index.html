@@ -1410,7 +1410,8 @@ try{
   APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
   initializeDoubtPool();
 // Create boats with guaranteed spread
-boats = [];
+} finally {
+  boats = [];
 const rows = 3;
 const cols = Math.ceil(BOAT_COUNT / rows);
 
@@ -1427,6 +1428,7 @@ for(let i = 0; i < BOAT_COUNT; i++) {
   boat.phase = Math.random() * Math.PI * 2;
   
   boats.push(boat);
+}
 }
 
 // Update counter on load
