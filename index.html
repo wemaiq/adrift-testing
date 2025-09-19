@@ -592,25 +592,7 @@ header.ripple span.figtree-adrift {
       }
       initializeDoubtPool();
       // Seed boats so render is immediate
-      // Create boats with guaranteed spread
-boats = [];
-const rows = 3;
-const cols = Math.ceil(BOAT_COUNT / rows);
-
-for(let i = 0; i < BOAT_COUNT; i++) {
-  const boat = new Boat();
-  const row = i % rows;
-  const col = Math.floor(i / rows);
-  
-  // Stagger columns so boats aren't in a perfect grid
-  const stagger = (row % 2) * (W / (cols * 2));
-  
-  boat.x = (col * W / cols) + (W / (cols * 2)) + stagger + (Math.random() - 0.5) * 40;
-  boat.yBase = H * 0.15 + (row * H * 0.6 / rows) + (Math.random() - 0.5) * 30;
-  boat.phase = Math.random() * Math.PI * 2;
-  
-  boats.push(boat);
-}
+      boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
       // Warm up counter silently
       const count = await fetchTotalDoubts().catch(()=>0);
       if (doubtCounter) {
@@ -690,7 +672,7 @@ for(let i = 0; i < BOAT_COUNT; i++) {
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyanBudHB2Y2d6amhvd3JsbWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0OTk4ODcsImV4cCI6MjA3MjA3NTg4N30.sDdezusu8bp6lBp6hmU6QnJVIz0Et4VHp5giEpUTa40';
 
 async function fetchApprovedDoubts(limit = 500) {
-const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&order=created_at.desc&limit=${limit}`;
+  const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&order=created_at.desc&limit=${limit}`;
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_ANON,
@@ -1409,26 +1391,9 @@ try{
   // Soft fallback if Supabase is unreachable
   APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
   initializeDoubtPool();
-// Create boats with guaranteed spread
 } finally {
-  boats = [];
-const rows = 3;
-const cols = Math.ceil(BOAT_COUNT / rows);
-
-for(let i = 0; i < BOAT_COUNT; i++) {
-  const boat = new Boat();
-  const row = i % rows;
-  const col = Math.floor(i / rows);
-  
-  // Stagger columns so boats aren't in a perfect grid
-  const stagger = (row % 2) * (W / (cols * 2));
-  
-  boat.x = (col * W / cols) + (W / (cols * 2)) + stagger + (Math.random() - 0.5) * 40;
-  boat.yBase = H * 0.15 + (row * H * 0.6 / rows) + (Math.random() - 0.5) * 30;
-  boat.phase = Math.random() * Math.PI * 2;
-  
-  boats.push(boat);
-}
+  // Seed boats only after we have something to show
+  boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
 }
 
 // Update counter on load
