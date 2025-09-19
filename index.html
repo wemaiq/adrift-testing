@@ -193,6 +193,7 @@
 
   /* Center-bottom CTA (kept) */
   .cta-btn{
+    --cta-glow-padding: 42px;
     padding:28px 36px; border-radius:9999px; font-size:13px; line-height:1; color:#fff;
     letter-spacing: 0.05em;
     border:1px solid rgba(255,255,255,.28);
@@ -206,7 +207,7 @@
     text-decoration: none;
     white-space: nowrap;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .cta-btn--floating {
@@ -214,12 +215,11 @@
   }
   .cta-btn__shape {
     position:absolute;
-    inset:0;
+    inset: calc(-1 * var(--cta-glow-padding, 42px));
     pointer-events:none;
     opacity:0;
     transition: opacity .35s ease;
     border-radius: inherit;
-    overflow: hidden;
   }
   .cta-btn__shape canvas {
     width:100% !important;
@@ -1490,49 +1490,42 @@ uniform vec2 u_mouse;
 uniform vec2 u_resolution;
 uniform float u_pixelRatio;
 
+uniform vec2 u_buttonSize;
 uniform float u_roundness;
-uniform float u_borderSize;
 uniform float u_circleSize;
 uniform float u_circleEdge;
-
-#ifndef PI
-#define PI 3.1415926535897932384626433832795
-#endif
-#ifndef TWO_PI
-#define TWO_PI 6.2831853071795864769252867665590
-#endif
+uniform float u_glowSize;
 
 float fill(float x, float size, float edge) {
     return 1.0 - smoothstep(size - edge, size + edge, x);
 }
 
-float strokeAA(float x, float size, float w, float edge) {
-    float afwidth = length(vec2(dFdx(x), dFdy(x))) * 0.70710678;
-    float d = smoothstep(size - edge - afwidth, size + edge + afwidth, x + w * 0.5)
-            - smoothstep(size - edge - afwidth, size + edge + afwidth, x - w * 0.5);
-    return clamp(d, 0.0, 1.0);
-}
-
 void main() {
-    vec2 buttonSize = u_resolution / max(u_pixelRatio, 0.0001);
-    float minDim = min(buttonSize.x, buttonSize.y);
+    vec2 canvasSize = u_resolution / max(u_pixelRatio, 0.0001);
+    vec2 buttonSize = max(u_buttonSize, vec2(0.0001));
+    float minDim = max(min(buttonSize.x, buttonSize.y), 0.0001);
     float cornerRadius = clamp(u_roundness, 0.0, minDim * 0.5);
-    float borderWidth = max(u_borderSize, 0.0);
 
-    vec2 fragPx = v_texcoord * buttonSize;
+    vec2 padding = max((canvasSize - buttonSize) * 0.5, vec2(0.0));
+    vec2 fragPx = v_texcoord * canvasSize - padding;
+
     vec2 halfSize = buttonSize * 0.5;
     vec2 q = abs(fragPx - halfSize) - (halfSize - vec2(cornerRadius));
     float sdf = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - cornerRadius;
 
     vec2 mousePx = clamp(u_mouse, vec2(0.0), buttonSize);
-    vec2 diff = (fragPx - mousePx) / max(minDim, 0.0001);
-    float sdfCircle = fill(length(diff) * 2.0, u_circleSize, u_circleEdge);
+    vec2 diff = (fragPx - mousePx) / minDim;
+    float cursorInfluence = fill(length(diff) * 2.0, u_circleSize, u_circleEdge);
 
-    float alpha = 0.0;
-    if (borderWidth > 0.0) {
-        float width = max(borderWidth, 0.001);
-        alpha = strokeAA(sdf, -width * 0.5, width, sdfCircle);
-    }
+    float glowExtent = max(u_glowSize, 1.0);
+    float sdfOutside = max(sdf, 0.0);
+
+    float baseGlow = exp(-sdfOutside / glowExtent);
+    float focusGlow = exp(-sdfOutside / max(glowExtent * 0.35, 0.001)) * cursorInfluence;
+    float softHalo = exp(-sdfOutside / (glowExtent * 1.5));
+
+    float alpha = (baseGlow * 0.35 + focusGlow * 0.45 + softHalo * 0.25) * step(0.0, sdf);
+    alpha = clamp(alpha, 0.0, 1.0);
 
     gl_FragColor = vec4(vec3(1.0), alpha);
 }
@@ -1545,9 +1538,10 @@ class ShapeBlurEffect {
       variation: 0,
       pixelRatioProp: 2,
       roundness: 0,
-      borderSize: 1,
       circleSize: 0.3,
-      circleEdge: 0.5
+      circleEdge: 0.5,
+      glowSize: 0,
+      glowPadding: 42
     }, options);
 
     this.mount = document.createElement('span');
@@ -1558,6 +1552,8 @@ class ShapeBlurEffect {
     this.vMouse = new THREE.Vector2();
     this.vMouseDamp = new THREE.Vector2();
     this.vResolution = new THREE.Vector2();
+    this.vButtonSize = new THREE.Vector2();
+    this.glowPadding = this.options.glowPadding || 0;
     this.lastTime = 0;
 
     this.init();
@@ -1566,7 +1562,7 @@ class ShapeBlurEffect {
   init() {
     if (!this.mount) return;
 
-    const { variation, pixelRatioProp, roundness, borderSize, circleSize, circleEdge } = this.options;
+    const { variation, pixelRatioProp, roundness, circleSize, circleEdge, glowSize } = this.options;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera();
@@ -1592,9 +1588,10 @@ class ShapeBlurEffect {
         u_resolution: { value: this.vResolution },
         u_pixelRatio: { value: pixelRatioProp },
         u_roundness: { value: roundness },
-        u_borderSize: { value: borderSize },
         u_circleSize: { value: circleSize },
-        u_circleEdge: { value: circleEdge }
+        u_circleEdge: { value: circleEdge },
+        u_buttonSize: { value: this.vButtonSize },
+        u_glowSize: { value: glowSize > 0 ? glowSize : 60 }
       },
       defines: { VAR: variation },
       transparent: true
@@ -1642,40 +1639,53 @@ class ShapeBlurEffect {
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    this.renderer.setPixelRatio(dpr);
-    this.renderer.setSize(w, h, false);
+    const styles = window.getComputedStyle ? getComputedStyle(this.button) : null;
+    const parsePx = value => {
+      const parsed = parseFloat(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
 
-    this.camera.left = -w / 2;
-    this.camera.right = w / 2;
-    this.camera.top = h / 2;
-    this.camera.bottom = -h / 2;
+    let radius = this.options.roundness || 0;
+    let glowPadding = Number.isFinite(this.options.glowPadding) ? this.options.glowPadding : 42;
+
+    if (styles) {
+      const parsedRadius = parsePx(styles.borderTopLeftRadius || styles.borderRadius);
+      const parsedPadding = parsePx(styles.getPropertyValue('--cta-glow-padding'));
+      if (parsedRadius > 0) radius = parsedRadius;
+      if (parsedPadding > 0) glowPadding = parsedPadding;
+    }
+
+    const autoGlow = Math.max(Math.max(w, h) * 0.65, 48);
+    const baseGlowSize = this.options.glowSize > 0 ? this.options.glowSize : Math.min(autoGlow, 220);
+    glowPadding = Math.max(glowPadding, baseGlowSize * 0.8);
+    this.glowPadding = glowPadding;
+    this.button.style.setProperty('--cta-glow-padding', `${glowPadding}px`);
+
+    const paddedW = w + glowPadding * 2;
+    const paddedH = h + glowPadding * 2;
+
+    this.renderer.setPixelRatio(dpr);
+    this.renderer.setSize(paddedW, paddedH, false);
+
+    this.camera.left = -paddedW / 2;
+    this.camera.right = paddedW / 2;
+    this.camera.top = paddedH / 2;
+    this.camera.bottom = -paddedH / 2;
     this.camera.updateProjectionMatrix();
 
     if (this.quad) {
-      this.quad.scale.set(w, h, 1);
+      this.quad.scale.set(paddedW, paddedH, 1);
     }
 
-    this.vResolution.set(w, h).multiplyScalar(dpr);
+    this.vResolution.set(paddedW, paddedH).multiplyScalar(dpr);
+    this.vButtonSize.set(w, h);
+
     if (this.material) {
       this.material.uniforms.u_pixelRatio.value = dpr;
-      const styles = window.getComputedStyle ? getComputedStyle(this.button) : null;
-      const parsePx = value => {
-        const parsed = parseFloat(value);
-        return Number.isNaN(parsed) ? 0 : parsed;
-      };
-
-      let borderWidth = this.options.borderSize || 0;
-      let radius = this.options.roundness || 0;
-
-      if (styles) {
-        const parsedBorder = parsePx(styles.borderTopWidth || styles.borderWidth);
-        const parsedRadius = parsePx(styles.borderTopLeftRadius || styles.borderRadius);
-        if (parsedBorder > 0) borderWidth = parsedBorder;
-        if (parsedRadius > 0) radius = parsedRadius;
-      }
+      this.material.uniforms.u_buttonSize.value.copy(this.vButtonSize);
+      this.material.uniforms.u_glowSize.value = baseGlowSize;
 
       const maxRadius = Math.min(radius, Math.min(w, h) * 0.5);
-      this.material.uniforms.u_borderSize.value = borderWidth;
       this.material.uniforms.u_roundness.value = maxRadius;
     }
   }
