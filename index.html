@@ -207,25 +207,6 @@
     white-space: nowrap;
   }
 
-  #enterBtn,
-  #releaseBtn {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .cta-btn__glow {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    mix-blend-mode: screen;
-  }
-
-  .cta-btn__glow canvas {
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-  }
-
   .cta-btn--floating {
     position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:5;
   }
@@ -549,7 +530,6 @@ header.ripple span.figtree-adrift {
     <button id="releaseBtn" class="cta-btn cta-btn--floating" aria-label="Release your doubt">Release your doubt</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
   <script src="./rain.js" defer=""></script>
 
 <script>
@@ -563,11 +543,6 @@ header.ripple span.figtree-adrift {
   const doubtCounter = document.getElementById('doubt-counter');
 
   /* === ADDED: preload helpers and loading UI === */
-  const PRELOAD_MAX_WAIT_MS = 2600;
-  const MEDIA_GRACE_MS = 1600;
-
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
   function preloadVideo(videoEl){
     return new Promise((resolve) => {
       if (!videoEl) return resolve();
@@ -608,29 +583,16 @@ header.ripple span.figtree-adrift {
     });
   }
 
-  function ensurePlaceholderDoubts(message = '(loading doubts…)') {
-    if (APPROVED_DOUBTS.length > 0) return;
-    const today = new Date().toISOString().slice(0, 10);
-    APPROVED_DOUBTS = [{ id: `placeholder-${today}`, text: message, date: today }];
-    initializeDoubtPool();
-  }
-
   async function preloadData(){
-    ensurePlaceholderDoubts('(loading doubts…)');
-    if (!boats || boats.length === 0) {
-      boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
-    }
-
     try{
-      let fetched = await fetchApprovedDoubts(600);
-      if (!Array.isArray(fetched) || fetched.length === 0) {
-        fetched = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
+      // Use existing fetchers so first frame has content
+      APPROVED_DOUBTS = await fetchApprovedDoubts(600);
+      if (APPROVED_DOUBTS.length === 0) {
+        APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
       }
-      APPROVED_DOUBTS = fetched;
       initializeDoubtPool();
-      // Seed boats so render is immediate with fresh data
+      // Seed boats so render is immediate
       boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
-
       // Warm up counter silently
       const count = await fetchTotalDoubts().catch(()=>0);
       if (doubtCounter) {
@@ -648,12 +610,9 @@ header.ripple span.figtree-adrift {
       if (!APPROVED_DOUBTS?.length) {
         APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
         initializeDoubtPool();
-      }
-      if (!boats || boats.length === 0) {
         boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
       }
       if (doubtCounter) {
-        doubtCounter.style.visibility = 'visible';
         doubtCounter.textContent = '0 doubts released';
         doubtCounter.dataset.startValue = '0';
       }
@@ -668,26 +627,12 @@ header.ripple span.figtree-adrift {
     const rainP  = preloadScriptAlreadyInPage('rain.js');
     const dataP  = preloadData();
 
-    const essentials = Promise.all([
-      Promise.race([videoP.catch(()=>{}), delay(MEDIA_GRACE_MS)]),
-      Promise.race([fontsP.catch(()=>{}), delay(MEDIA_GRACE_MS)]),
-      rainP.catch(()=>{}),
-      dataP.catch(()=>{})
-    ]);
-
-    essentials.then(() => {
-      preloadAllDone = true;
-    }).catch((err) => {
-      console.error('Essential preload failed:', err);
-    });
-
-    audioP.catch((err) => {
-      console.warn('Audio preload issue:', err);
-    });
+    // Safety cap so we don’t hang forever waiting on a stubborn canplaythrough
+    const cap = new Promise(res => setTimeout(res, 7000));
 
     await Promise.race([
-      essentials,
-      delay(PRELOAD_MAX_WAIT_MS)
+      Promise.all([videoP, audioP, fontsP, rainP, dataP]),
+      cap
     ]);
   }
 
@@ -697,7 +642,10 @@ header.ripple span.figtree-adrift {
   function ensurePreloadAll(){
     if (!preloadAllPromise) {
       preloadAllDone = false;
-      preloadAllPromise = preloadAll().catch((err) => {
+      preloadAllPromise = preloadAll().then((value) => {
+        preloadAllDone = true;
+        return value;
+      }).catch((err) => {
         preloadAllDone = false;
         preloadAllPromise = null;
         throw err;
@@ -745,7 +693,7 @@ header.ripple span.figtree-adrift {
         console.error('Preload failed:', err);
       } finally {
         setLoadingUI(false);
-        revealMainContent();  // only after preload finishes (or the quick timeout fallback)
+        revealMainContent();  // only after preload finishes (or the 7s cap)
       }
     });
   }
@@ -849,311 +797,6 @@ function animateDoubtCounter(el, targetValue) {
   const bgAudio = document.getElementById('bgAudio');
   const soundToggle = document.getElementById('soundToggle');
   const releaseBtn = document.getElementById('releaseBtn');
-
-  function setupButtonHoverEffects() {
-    if (!window.THREE) {
-      return;
-    }
-
-    const vertexShader = /* glsl */ `
-varying vec2 v_texcoord;
-void main() {
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    v_texcoord = uv;
-}
-`;
-
-    const fragmentShader = /* glsl */ `
-varying vec2 v_texcoord;
-
-uniform vec2 u_mouse;
-uniform vec2 u_resolution;
-uniform float u_pixelRatio;
-
-uniform float u_shapeSize;
-uniform float u_roundness;
-uniform float u_borderSize;
-uniform float u_circleSize;
-uniform float u_circleEdge;
-
-#ifndef PI
-#define PI 3.1415926535897932384626433832795
-#endif
-#ifndef TWO_PI
-#define TWO_PI 6.2831853071795864769252867665590
-#endif
-
-#ifndef VAR
-#define VAR 0
-#endif
-
-#ifndef FNC_COORD
-#define FNC_COORD
-vec2 coord(in vec2 p) {
-    p = p / u_resolution.xy;
-    if (u_resolution.x > u_resolution.y) {
-        p.x *= u_resolution.x / u_resolution.y;
-        p.x += (u_resolution.y - u_resolution.x) / u_resolution.y / 2.0;
-    } else {
-        p.y *= u_resolution.y / u_resolution.x;
-        p.y += (u_resolution.x - u_resolution.y) / u_resolution.x / 2.0;
-    }
-    p -= 0.5;
-    p *= vec2(-1.0, 1.0);
-    return p;
-}
-#endif
-
-#define st0 coord(gl_FragCoord.xy)
-#define mx coord(u_mouse * u_pixelRatio)
-
-float sdRoundRect(vec2 p, vec2 b, float r) {
-    vec2 d = abs(p - 0.5) * 4.2 - b + vec2(r);
-    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
-}
-float sdCircle(in vec2 st, in vec2 center) {
-    return length(st - center) * 2.0;
-}
-float sdPoly(in vec2 p, in float w, in int sides) {
-    float a = atan(p.x, p.y) + PI;
-    float r = TWO_PI / float(sides);
-    float d = cos(floor(0.5 + a / r) * r - a) * length(max(abs(p) * 1.0, 0.0));
-    return d * 2.0 - w;
-}
-
-float aastep(float threshold, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * 0.70710678118654757;
-    return smoothstep(threshold - afwidth, threshold + afwidth, value);
-}
-float fill(in float x) { return 1.0 - aastep(0.0, x); }
-float fill(float x, float size, float edge) {
-    return 1.0 - smoothstep(size - edge, size + edge, x);
-}
-float stroke(in float d, in float t) { return (1.0 - aastep(t, abs(d))); }
-float stroke(float x, float size, float w, float edge) {
-    float d = smoothstep(size - edge, size + edge, x + w * 0.5) - smoothstep(size - edge, size + edge, x - w * 0.5);
-    return clamp(d, 0.0, 1.0);
-}
-
-float strokeAA(float x, float size, float w, float edge) {
-    float afwidth = length(vec2(dFdx(x), dFdy(x))) * 0.70710678;
-    float d = smoothstep(size - edge - afwidth, size + edge + afwidth, x + w * 0.5)
-            - smoothstep(size - edge - afwidth, size + edge + afwidth, x - w * 0.5);
-    return clamp(d, 0.0, 1.0);
-}
-
-void main() {
-    vec2 st = st0 + 0.5;
-    vec2 posMouse = mx * vec2(1., -1.) + 0.5;
-
-    float size = u_shapeSize;
-    float roundness = u_roundness;
-    float borderSize = u_borderSize;
-    float circleSize = u_circleSize;
-    float circleEdge = u_circleEdge;
-
-    float sdfCircle = fill(
-        sdCircle(st, posMouse),
-        circleSize,
-        circleEdge
-    );
-
-    float sdf;
-    if (VAR == 0) {
-        sdf = sdRoundRect(st, vec2(size), roundness);
-        sdf = strokeAA(sdf, 0.0, borderSize, sdfCircle) * 4.0;
-    } else if (VAR == 1) {
-        sdf = sdCircle(st, vec2(0.5));
-        sdf = fill(sdf, 0.6, sdfCircle) * 1.2;
-    } else if (VAR == 2) {
-        sdf = sdCircle(st, vec2(0.5));
-        sdf = strokeAA(sdf, 0.58, 0.02, sdfCircle) * 4.0;
-    } else if (VAR == 3) {
-        sdf = sdPoly(st - vec2(0.5, 0.45), 0.3, 3);
-        sdf = fill(sdf, 0.05, sdfCircle) * 1.4;
-    }
-
-    vec3 color = vec3(1.0);
-    float alpha = sdf;
-    gl_FragColor = vec4(color.rgb, alpha);
-}
-`;
-
-    class ShapeBlurEffect {
-      constructor(target, options = {}) {
-        this.target = target;
-        this.options = Object.assign({
-          variation: 0,
-          pixelRatio: 2,
-          shapeSize: 1.2,
-          roundness: 0.4,
-          borderSize: 0.05,
-          circleSize: 0.3,
-          circleEdge: 0.5
-        }, options);
-
-        this.mount = document.createElement('div');
-        this.mount.className = 'cta-btn__glow';
-        this.target.appendChild(this.mount);
-
-        this.vMouse = new THREE.Vector2(-1000, -1000);
-        this.vMouseDamp = new THREE.Vector2(-1000, -1000);
-        this.vResolution = new THREE.Vector2();
-
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.OrthographicCamera();
-        this.camera.position.z = 1;
-
-        this.renderer = new THREE.WebGLRenderer({ alpha: true });
-        this.renderer.setClearColor(0x000000, 0);
-        this.mount.appendChild(this.renderer.domElement);
-
-        this.material = new THREE.ShaderMaterial({
-          vertexShader,
-          fragmentShader,
-          uniforms: {
-            u_mouse: { value: this.vMouseDamp },
-            u_resolution: { value: this.vResolution },
-            u_pixelRatio: { value: this.options.pixelRatio },
-            u_shapeSize: { value: this.options.shapeSize },
-            u_roundness: { value: this.options.roundness },
-            u_borderSize: { value: this.options.borderSize },
-            u_circleSize: { value: this.options.circleSize },
-            u_circleEdge: { value: this.options.circleEdge }
-          },
-          defines: { VAR: this.options.variation },
-          transparent: true
-        });
-
-        this.geometry = new THREE.PlaneGeometry(1, 1);
-        this.mesh = new THREE.Mesh(this.geometry, this.material);
-        this.scene.add(this.mesh);
-
-        this.animationFrame = null;
-        this.lastTime = performance.now() * 0.001;
-
-        this.handlePointerMove = this.handlePointerMove.bind(this);
-        this.handlePointerLeave = this.handlePointerLeave.bind(this);
-        this.handleResize = this.handleResize.bind(this);
-        this.update = this.update.bind(this);
-
-        this.target.addEventListener('pointermove', this.handlePointerMove);
-        this.target.addEventListener('pointerleave', this.handlePointerLeave);
-        this.target.addEventListener('pointercancel', this.handlePointerLeave);
-
-        if (typeof ResizeObserver === 'function') {
-          this.resizeObserver = new ResizeObserver(this.handleResize);
-          this.resizeObserver.observe(this.target);
-        } else {
-          this.resizeObserver = null;
-          window.addEventListener('resize', this.handleResize);
-        }
-
-        this.handleResize();
-        this.update();
-      }
-
-      updateMouseFromEvent(event) {
-        if (!event) return;
-        const rect = this.target.getBoundingClientRect();
-        this.vMouse.set(event.clientX - rect.left, event.clientY - rect.top);
-      }
-
-      handlePointerMove(event) {
-        this.updateMouseFromEvent(event);
-      }
-
-      handlePointerLeave() {
-        this.vMouse.set(-1000, -1000);
-      }
-
-      handleResize() {
-        const rect = this.target.getBoundingClientRect();
-        const width = Math.max(1, rect.width);
-        const height = Math.max(1, rect.height);
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-        this.renderer.setPixelRatio(dpr);
-        this.renderer.setSize(width, height);
-
-        this.camera.left = -width / 2;
-        this.camera.right = width / 2;
-        this.camera.top = height / 2;
-        this.camera.bottom = -height / 2;
-        this.camera.updateProjectionMatrix();
-
-        this.mesh.scale.set(width, height, 1);
-        this.vResolution.set(width, height).multiplyScalar(dpr);
-        this.material.uniforms.u_pixelRatio.value = dpr;
-      }
-
-      update() {
-        const now = performance.now() * 0.001;
-        const dt = now - this.lastTime;
-        this.lastTime = now;
-
-        this.vMouseDamp.x = THREE.MathUtils.damp(this.vMouseDamp.x, this.vMouse.x, 8, dt);
-        this.vMouseDamp.y = THREE.MathUtils.damp(this.vMouseDamp.y, this.vMouse.y, 8, dt);
-
-        this.renderer.render(this.scene, this.camera);
-        this.animationFrame = requestAnimationFrame(this.update);
-      }
-
-      destroy() {
-        cancelAnimationFrame(this.animationFrame);
-        this.target.removeEventListener('pointermove', this.handlePointerMove);
-        this.target.removeEventListener('pointerleave', this.handlePointerLeave);
-        this.target.removeEventListener('pointercancel', this.handlePointerLeave);
-        if (this.resizeObserver) {
-          this.resizeObserver.disconnect();
-        } else {
-          window.removeEventListener('resize', this.handleResize);
-        }
-        if (this.mount.contains(this.renderer.domElement)) {
-          this.mount.removeChild(this.renderer.domElement);
-        }
-        this.renderer.dispose();
-        this.geometry.dispose();
-        this.material.dispose();
-        this.scene.remove(this.mesh);
-        if (this.mount.parentNode === this.target) {
-          this.target.removeChild(this.mount);
-        }
-      }
-    }
-
-    const attachShapeBlurHover = (button, options = {}) => {
-      if (!button) return;
-      let effect = null;
-
-      const handleEnter = (event) => {
-        if (!effect) {
-          effect = new ShapeBlurEffect(button, options);
-        }
-        effect.updateMouseFromEvent(event);
-      };
-
-      const handleLeave = () => {
-        if (effect) {
-          effect.destroy();
-          effect = null;
-        }
-      };
-
-      button.addEventListener('pointerenter', handleEnter);
-      button.addEventListener('pointerleave', handleLeave);
-      button.addEventListener('pointercancel', handleLeave);
-    };
-
-    attachShapeBlurHover(enterBtn, { variation: 0 });
-    attachShapeBlurHover(releaseBtn, { variation: 0 });
-  }
-
-  if (window.THREE) {
-    setupButtonHoverEffects();
-  } else {
-    window.addEventListener('load', setupButtonHoverEffects, { once: true });
-  }
 
   let W, H;
   function resize() {
@@ -1771,10 +1414,10 @@ function pickRandomDoubt() {
     });
   };
 
-  // Kick off resource preloading immediately; also retry once DOM is ready as a safety net
-  startPreload();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startPreload, { once: true });
+  } else {
+    startPreload();
   }
 </script>
 
