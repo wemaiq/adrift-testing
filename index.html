@@ -203,8 +203,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    position: relative;
     text-decoration: none;
     white-space: nowrap;
   }
@@ -214,36 +212,6 @@
   }
   .cta-btn:hover{ box-shadow: 0 0 36px 12px rgba(255, 219, 90, 0.174), 0 0 8px 2px rgba(255,255,255,.25); border-color: rgba(255,255,255,.5); }
   .cta-btn:focus-visible{ outline:2px solid rgba(255, 200, 100, 0.35); outline-offset:3px; }
-
-  .cta-btn__spinner {
-    width: 16px;
-    height: 16px;
-    border-radius: 9999px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    display: none;
-    box-sizing: border-box;
-    animation: introButtonSpinner 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-
-  .intro-enter-btn.loading {
-    cursor: wait;
-  }
-
-  .intro-enter-btn.loading .cta-btn__spinner {
-    display: inline-block;
-  }
-
-  @keyframes introButtonSpinner {
-    to { transform: rotate(360deg); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .intro-enter-btn.loading .cta-btn__spinner {
-      animation: none;
-    }
-  }
 
   /* Hidden media */
   #boatVideo, #bgAudio { position: fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none; }
@@ -429,6 +397,18 @@ header.ripple span.figtree-adrift {
 }
 /* --- end added --- */
 
+/* === ADDED: loading dots for Enter button === */
+.loading-dots { display:inline-flex; gap:.25em; margin-left:.4em; vertical-align:baseline; }
+.loading-dots span { width:.35em; height:.35em; border-radius:50%; background: currentColor; opacity:.2; animation: dotBlink 1s infinite; }
+.loading-dots span:nth-child(2){ animation-delay:.15s; }
+.loading-dots span:nth-child(3){ animation-delay:.30s; }
+@keyframes dotBlink {
+  0%, 20% { opacity:.2; transform: translateY(0); }
+  50%     { opacity:1;  transform: translateY(-1px); }
+  100%    { opacity:.2; transform: translateY(0); }
+}
+/* === end loading dots === */
+
 /* Mobile responsive styles */
 @media (max-width: 640px) {
   .intro-content {
@@ -529,10 +509,7 @@ header.ripple span.figtree-adrift {
     <div class="intro-content">
       <div id="doubt-counter" aria-live="polite" data-start-value="0">0 doubts released</div>
       <p id="intro-text">Adrift is a quiet space where doubts become paper boats and drift together across a shared sea.</p>
-      <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">
-        <span class="cta-btn__spinner" aria-hidden="true"></span>
-        <span class="cta-btn__label">Enter</span>
-      </button>
+      <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">Enter</button>
     </div>
   </div>
 
@@ -565,11 +542,101 @@ header.ripple span.figtree-adrift {
   const enterBtn = document.getElementById('enterBtn');
   const doubtCounter = document.getElementById('doubt-counter');
 
-  let mainContentReady = false;
-  let resolveMainContentReady;
-  const mainContentReadyPromise = new Promise((resolve) => {
-    resolveMainContentReady = resolve;
-  });
+  /* === ADDED: preload helpers and loading UI === */
+  function preloadVideo(videoEl){
+    return new Promise((resolve) => {
+      if (!videoEl) return resolve();
+      const done = () => resolve();
+      if (videoEl.readyState >= 2) return resolve(); // HAVE_CURRENT_DATA
+      videoEl.addEventListener('canplay', done, { once:true });
+      try {
+        videoEl.load();
+        // muted video can play without gesture; prime a frame then pause
+        videoEl.play().then(()=>{ videoEl.pause(); }).catch(()=>{ /* ignore */ });
+      } catch(_) {}
+    });
+  }
+
+  function preloadAudio(audioEl){
+    return new Promise((resolve) => {
+      if (!audioEl) return resolve();
+      const done = () => resolve();
+      if (audioEl.readyState >= 2) return resolve();
+      audioEl.addEventListener('canplaythrough', done, { once:true });
+      try { audioEl.load(); } catch(_) {}
+      // do not play; just buffer
+    });
+  }
+
+  function preloadFonts(){
+    if (document.fonts && document.fonts.ready) return document.fonts.ready.catch(()=>{});
+    return Promise.resolve();
+  }
+
+  function preloadScriptAlreadyInPage(src){
+    const tag = [...document.scripts].find(s => (s.src||'').includes(src));
+    if (!tag) return Promise.resolve();
+    if (tag.dataset.loaded === '1' || tag.dataset.error === '1') return Promise.resolve();
+    return new Promise((resolve)=> {
+      tag.addEventListener('load', ()=>{ tag.dataset.loaded='1'; resolve(); }, { once:true });
+      tag.addEventListener('error',()=>{ tag.dataset.error='1'; resolve(); }, { once:true });
+    });
+  }
+
+  async function preloadData(){
+    try{
+      // Use existing fetchers so first frame has content
+      APPROVED_DOUBTS = await fetchApprovedDoubts(600);
+      if (APPROVED_DOUBTS.length === 0) {
+        APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
+      }
+      initializeDoubtPool();
+      // Seed boats so render is immediate
+      boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+      // Warm up counter silently
+      const count = await fetchTotalDoubts().catch(()=>0);
+      if (doubtCounter) {
+        doubtCounter.style.visibility = 'visible';
+        if (count > 0) animateDoubtCounter(doubtCounter, count);
+        else doubtCounter.textContent = '0 doubts released';
+      }
+    } catch(err){
+      console.error('Data preload failed:', err);
+      if (!APPROVED_DOUBTS?.length) {
+        APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
+        initializeDoubtPool();
+        boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+      }
+    }
+  }
+
+  async function preloadAll(){
+    const videoP = preloadVideo(document.getElementById('boatVideo'));
+    const audioP = preloadAudio(document.getElementById('bgAudio'));
+    const fontsP = preloadFonts();
+    const rainP  = preloadScriptAlreadyInPage('rain.js');
+    const dataP  = preloadData();
+
+    // Safety cap so we don’t hang forever waiting on a stubborn canplaythrough
+    const cap = new Promise(res => setTimeout(res, 7000));
+
+    await Promise.race([
+      Promise.all([videoP, audioP, fontsP, rainP, dataP]),
+      cap
+    ]);
+  }
+
+  function setLoadingUI(isLoading){
+    if (!enterBtn) return;
+    if (isLoading){
+      enterBtn.disabled = true;
+      enterBtn.innerHTML = `Loading<span class="loading-dots"><span></span><span></span><span></span></span>`;
+    } else {
+      enterBtn.disabled = false;
+      enterBtn.textContent = 'Enter';
+    }
+  }
+  /* === end preload helpers === */
 
   function revealMainContent() {
     if (!introOverlay || introOverlay.classList.contains('fade-out')) return;
@@ -585,66 +652,15 @@ header.ripple span.figtree-adrift {
     }, 1200);
   }
 
-  function markMainContentReady() {
-    if (mainContentReady) return;
-    mainContentReady = true;
-    if (typeof resolveMainContentReady === 'function') {
-      resolveMainContentReady();
-      resolveMainContentReady = null;
-    }
-  }
-
   if (enterBtn) {
-    const enterBtnLabel = enterBtn.querySelector('.cta-btn__label');
-    const originalEnterLabel = enterBtnLabel?.textContent?.trim() || enterBtn.textContent.trim() || 'Enter';
-    let loaderTimeoutId;
-    let loaderVisible = false;
-    let revealInitiated = false;
-
-    function showEnterLoader() {
-      if (!enterBtn || loaderVisible) return;
-      loaderVisible = true;
-      enterBtn.classList.add('loading');
-      enterBtn.setAttribute('aria-busy', 'true');
-      if (enterBtnLabel) {
-        enterBtnLabel.textContent = 'Loading…';
-      }
-    }
-
-    function hideEnterLoader() {
-      if (!enterBtn) return;
-      loaderVisible = false;
-      enterBtn.classList.remove('loading');
-      enterBtn.removeAttribute('aria-busy');
-      if (enterBtnLabel) {
-        enterBtnLabel.textContent = originalEnterLabel;
-      }
-    }
-
-    const proceedToReveal = () => {
-      if (revealInitiated) return;
-      revealInitiated = true;
-      clearTimeout(loaderTimeoutId);
-      hideEnterLoader();
-      revealMainContent();
-    };
-
-    enterBtn.addEventListener('click', () => {
-      if (revealInitiated) return;
-      enterBtn.disabled = true;
-
-      loaderTimeoutId = window.setTimeout(() => {
-        if (!mainContentReady) {
-          showEnterLoader();
-        }
-      }, 2000);
-
-      if (mainContentReady) {
-        proceedToReveal();
-      } else {
-        mainContentReadyPromise
-          .then(proceedToReveal)
-          .catch(proceedToReveal);
+    enterBtn.addEventListener('click', async () => {
+      if (enterBtn.disabled) return;
+      setLoadingUI(true);
+      try {
+        await preloadAll();   // preload video, audio (buffer only), fonts, rain.js (best effort), data + seed boats
+      } finally {
+        setLoadingUI(false);
+        revealMainContent();  // only after preload finishes (or the 7s cap)
       }
     });
   }
@@ -809,16 +825,33 @@ setTimeout(() => {
   }
 }, 15000);
 
-const ensurePlay = () => { 
+/* ==== CHANGED: don’t start audio when clicking Enter ==== */
+let audioStarted = false;
+function ensurePlay(e){
+  if (audioStarted) return;
+
+  // Ignore interactions on the intro overlay (e.g., clicking "Enter")
+  const overlay = document.getElementById('intro-overlay');
+  if (overlay && e && overlay.contains(e.target)) {
+    return; // do nothing; keep listeners for later interactions
+  }
+
   if (!videoReady) {
     console.log('User interaction - forcing video restart');
     checkAndRestartVideo();
   }
-  boatVideo.play().catch(() => {}); 
-  startAudio(); 
-};
-addEventListener('pointerdown', ensurePlay, {once:true}); 
-addEventListener('keydown', ensurePlay, {once:true});
+  boatVideo.play().catch(() => {});
+  startAudio();
+  audioStarted = true;
+
+  // Clean up listeners after first successful start outside the intro
+  removeEventListener('pointerdown', ensurePlay);
+  removeEventListener('keydown', ensurePlay);
+}
+addEventListener('pointerdown', ensurePlay);
+addEventListener('keydown', ensurePlay);
+/* ==== end change ==== */
+
 soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { bgAudio.pause(); updateSoundUI(false); } });
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && !bgAudio.paused){ bgAudio.play().catch(()=>{}); } });
 
@@ -850,8 +883,14 @@ function shuffleArray(array) {
 }
 
 function initializeDoubtPool() {
-  // Create a shuffled copy of all approved doubts
-  SHUFFLED_DOUBTS = shuffleArray(APPROVED_DOUBTS);
+  // Double shuffle for more randomness
+  let shuffled = shuffleArray(APPROVED_DOUBTS);
+  
+  // Start from a random position in the shuffled array
+  const randomStart = Math.floor(Math.random() * shuffled.length);
+  shuffled = [...shuffled.slice(randomStart), ...shuffled.slice(0, randomStart)];
+  
+  SHUFFLED_DOUBTS = shuffled;
   USED_DOUBT_IDS.clear();
   console.log('Initialized shuffled doubt pool:', SHUFFLED_DOUBTS.length, 'doubts');
 }
@@ -1044,6 +1083,7 @@ function pickRandomDoubt() {
     }
     hit(mx,my){ 
       return mx>=this.x-this._w/2 && mx<=this.x+this._w/2 && 
+             my>=this.y-this._h/2 && mx!=null && my!=null && 
              my>=this.y-this._h/2 && my<=this.y+this._h/2; 
     }
   }
@@ -1214,7 +1254,7 @@ function pickRandomDoubt() {
         <div><span id="charCount">0</span>/200</div>
         <button class="pill-btn" id="submitDoubt" type="button">Release</button>
       </div>
-      <p class="compose-disclaimer">Disruptive or offensive posts blocked.</p>
+      <p class="compose-disclaimer">Offensive or disruptive posts are blocked.</p>
     `;
 
     createNote({
@@ -1354,7 +1394,6 @@ try{
 } finally {
   // Seed boats only after we have something to show
   boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
-  markMainContentReady();
 }
 
 // Update counter on load
