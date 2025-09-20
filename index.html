@@ -203,6 +203,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
+    position: relative;
     text-decoration: none;
     white-space: nowrap;
   }
@@ -212,6 +214,36 @@
   }
   .cta-btn:hover{ box-shadow: 0 0 36px 12px rgba(255, 219, 90, 0.174), 0 0 8px 2px rgba(255,255,255,.25); border-color: rgba(255,255,255,.5); }
   .cta-btn:focus-visible{ outline:2px solid rgba(255, 200, 100, 0.35); outline-offset:3px; }
+
+  .cta-btn__spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    display: none;
+    box-sizing: border-box;
+    animation: introButtonSpinner 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .intro-enter-btn.loading {
+    cursor: wait;
+  }
+
+  .intro-enter-btn.loading .cta-btn__spinner {
+    display: inline-block;
+  }
+
+  @keyframes introButtonSpinner {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro-enter-btn.loading .cta-btn__spinner {
+      animation: none;
+    }
+  }
 
   /* Hidden media */
   #boatVideo, #bgAudio { position: fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none; }
@@ -497,7 +529,10 @@ header.ripple span.figtree-adrift {
     <div class="intro-content">
       <div id="doubt-counter" aria-live="polite" data-start-value="0">0 doubts released</div>
       <p id="intro-text">Adrift is a quiet space where doubts become paper boats and drift together across a shared sea.</p>
-      <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">Enter</button>
+      <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">
+        <span class="cta-btn__spinner" aria-hidden="true"></span>
+        <span class="cta-btn__label">Enter</span>
+      </button>
     </div>
   </div>
 
@@ -530,6 +565,12 @@ header.ripple span.figtree-adrift {
   const enterBtn = document.getElementById('enterBtn');
   const doubtCounter = document.getElementById('doubt-counter');
 
+  let mainContentReady = false;
+  let resolveMainContentReady;
+  const mainContentReadyPromise = new Promise((resolve) => {
+    resolveMainContentReady = resolve;
+  });
+
   function revealMainContent() {
     if (!introOverlay || introOverlay.classList.contains('fade-out')) return;
     if (introText) {
@@ -544,10 +585,67 @@ header.ripple span.figtree-adrift {
     }, 1200);
   }
 
+  function markMainContentReady() {
+    if (mainContentReady) return;
+    mainContentReady = true;
+    if (typeof resolveMainContentReady === 'function') {
+      resolveMainContentReady();
+      resolveMainContentReady = null;
+    }
+  }
+
   if (enterBtn) {
-    enterBtn.addEventListener('click', () => {
-      enterBtn.disabled = true;
+    const enterBtnLabel = enterBtn.querySelector('.cta-btn__label');
+    const originalEnterLabel = enterBtnLabel?.textContent?.trim() || enterBtn.textContent.trim() || 'Enter';
+    let loaderTimeoutId;
+    let loaderVisible = false;
+    let revealInitiated = false;
+
+    function showEnterLoader() {
+      if (!enterBtn || loaderVisible) return;
+      loaderVisible = true;
+      enterBtn.classList.add('loading');
+      enterBtn.setAttribute('aria-busy', 'true');
+      if (enterBtnLabel) {
+        enterBtnLabel.textContent = 'Loading…';
+      }
+    }
+
+    function hideEnterLoader() {
+      if (!enterBtn) return;
+      loaderVisible = false;
+      enterBtn.classList.remove('loading');
+      enterBtn.removeAttribute('aria-busy');
+      if (enterBtnLabel) {
+        enterBtnLabel.textContent = originalEnterLabel;
+      }
+    }
+
+    const proceedToReveal = () => {
+      if (revealInitiated) return;
+      revealInitiated = true;
+      clearTimeout(loaderTimeoutId);
+      hideEnterLoader();
       revealMainContent();
+    };
+
+    enterBtn.addEventListener('click', () => {
+      if (revealInitiated) return;
+      enterBtn.disabled = true;
+
+      loaderTimeoutId = window.setTimeout(() => {
+        if (!mainContentReady) {
+          showEnterLoader();
+        }
+      }, 2000);
+
+      if (mainContentReady) {
+        proceedToReveal();
+      } else {
+        mainContentReadyPromise
+          .then(proceedToReveal)
+          .catch(proceedToReveal);
+      }
     });
   }
 
@@ -1256,6 +1354,7 @@ try{
 } finally {
   // Seed boats only after we have something to show
   boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+  markMainContentReady();
 }
 
 // Update counter on load
