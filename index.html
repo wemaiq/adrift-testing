@@ -177,6 +177,72 @@
   header{ font-weight:400; position:fixed; top:18px; left:50%; transform:translateX(-50%); letter-spacing:0.25em; font-size:20px; font-family:"Dongle", ui-sans-serif, system-ui, sans-serif;text-transform:uppercase; text-align:center; user-select:none; z-index:5; }
   .hint{ font-weight:400; position:fixed; left:20px; bottom:16px; color:#9aa0a8; font-size:12px; opacity:.7; user-select:none; background: rgba(255,255,255,.03); letter-spacing: 0.05em; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); backdrop-filter: blur(3px); z-index:5; }
 
+  /* View toggle */
+  .view-toggle {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(3px);
+    z-index: 5;
+  }
+
+  .view-toggle__option {
+    position: relative;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(236,236,237,.68);
+    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color .25s ease, background .25s ease, box-shadow .25s ease;
+  }
+
+  .view-toggle__option:focus-visible {
+    outline: 2px solid rgba(255, 200, 100, 0.35);
+    outline-offset: 2px;
+  }
+
+  .view-toggle__option.is-active {
+    color: #ececed;
+    background: rgba(255,255,255,.12);
+    box-shadow: 0 10px 24px rgba(0,0,0,.3);
+  }
+
+  .view-toggle__option.is-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(255,255,255,.22);
+    pointer-events: none;
+  }
+
+  @media (max-width: 600px) {
+    .view-toggle {
+      top: 72px;
+      padding: 3px;
+    }
+
+    .view-toggle__option {
+      padding: 6px 14px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+  }
+
   /* Sound toggle */
   .sound-toggle{
     position:fixed; right:20px; bottom:16px; z-index:5;
@@ -489,6 +555,7 @@ header.ripple span.figtree-adrift {
   .cta-btn { padding: 16px 24px; }
   .cta-btn--floating { bottom: 16px; }
   header { top: 10px; }
+  .view-toggle { top: 64px; }
 }
 
 /* For high-DPI displays (retina) */
@@ -516,6 +583,10 @@ header.ripple span.figtree-adrift {
   <!-- Main content wrapper -->
   <div class="main-content">
     <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
+    <div class="view-toggle" role="group" aria-label="Choose between doubts and affirmations">
+      <button type="button" class="view-toggle__option is-active" data-view="doubts" aria-pressed="true">Doubts</button>
+      <button type="button" class="view-toggle__option" data-view="affirmations" aria-pressed="false">Affirmations</button>
+    </div>
 
     <!-- media -->
     <video id="boatVideo" src="boat.mp4" loop="" muted="" playsinline="" preload="auto"></video>
@@ -541,6 +612,20 @@ header.ripple span.figtree-adrift {
   const mainContent = document.querySelector('.main-content');
   const enterBtn = document.getElementById('enterBtn');
   const doubtCounter = document.getElementById('doubt-counter');
+  const viewToggle = document.querySelector('.view-toggle');
+  const viewToggleButtons = viewToggle ? viewToggle.querySelectorAll('.view-toggle__option') : [];
+
+  if (viewToggleButtons.length) {
+    viewToggleButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        viewToggleButtons.forEach((btn) => {
+          const isActive = btn === button;
+          btn.classList.toggle('is-active', isActive);
+          btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+      });
+    });
+  }
 
   /* === ADDED: preload helpers and loading UI === */
   function preloadVideo(videoEl){
