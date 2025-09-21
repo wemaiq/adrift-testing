@@ -733,7 +733,7 @@ header.ripple span.figtree-adrift {
   <!-- Intro overlay -->
  <div id="intro-overlay">
     <div class="intro-content">
-      <div id="doubt-counter" aria-live="polite" data-start-value="0">0 doubts released</div>
+      <div id="doubt-counter" aria-live="polite" data-start-value="0">0 boats released</div>
       <p id="intro-text">Adrift is a quiet space where doubts become paper boats and drift together across a shared sea.</p>
       <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">Enter</button>
     </div>
@@ -1124,7 +1124,7 @@ header.ripple span.figtree-adrift {
       if (doubtCounter) {
         doubtCounter.style.visibility = 'visible';
         if (count > 0) animateDoubtCounter(doubtCounter, count);
-        else doubtCounter.textContent = '0 doubts released';
+        else doubtCounter.textContent = '0 boats released';
       }
     } catch(err){
       console.error('Data preload failed:', err);
@@ -1219,17 +1219,27 @@ async function fetchApprovedDoubts(limit = 500) {
 }
 
 async function fetchTotalDoubts() {
-  const url = `${SUPABASE_URL}/rest/v1/doubts?select=count&approved=is.true`;
-  const res = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_ANON,
-      Authorization: `Bearer ${SUPABASE_ANON}`,
-      Accept: 'application/json',
-      Prefer: 'count=exact'
-    }
-  });
-  if (!res.ok) return 0;
-  return parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0');
+  const headers = {
+    apikey: SUPABASE_ANON,
+    Authorization: `Bearer ${SUPABASE_ANON}`,
+    Accept: 'application/json',
+    Prefer: 'count=exact'
+  };
+
+  const [doubtsResult, supportResult] = await Promise.allSettled([
+    fetch(`${SUPABASE_URL}/rest/v1/doubts?select=count&approved=is.true`, { headers }),
+    fetch(`${SUPABASE_URL}/rest/v1/doubts?select=count&support=is.true`, { headers })
+  ]);
+
+  const parseCount = (result) => {
+    if (result.status !== 'fulfilled') return 0;
+    const response = result.value;
+    if (!response.ok) return 0;
+    const total = parseInt(response.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+    return Number.isFinite(total) ? total : 0;
+  };
+
+  return parseCount(doubtsResult) + parseCount(supportResult);
 }
 
 async function fetchSupportNotes(limit = 400) {
@@ -1299,7 +1309,7 @@ function animateDoubtCounter(el, targetValue) {
   const finalValue = Math.max(0, targetValue);
   const startValue = Number(el.dataset.startValue || 0);
   const formatter = new Intl.NumberFormat();
-  const formatValue = (value) => `${formatter.format(value)} doubt${value === 1 ? '' : 's'} released`;
+  const formatValue = (value) => `${formatter.format(value)} boats released`;
 
   if (finalValue <= startValue) {
     el.textContent = formatValue(finalValue);
@@ -2106,7 +2116,7 @@ fetchTotalDoubts().then(count => {
   if (count > 0) {
     animateDoubtCounter(doubtCounter, count);
   } else {
-    doubtCounter.textContent = '0 doubts released';
+    doubtCounter.textContent = '0 boats released';
   }
 }).catch(() => {
   if (doubtCounter) doubtCounter.style.visibility = 'hidden';
