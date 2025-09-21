@@ -1005,8 +1005,9 @@ header.ripple span.figtree-adrift {
     const normalized = view === 'affirmations' ? 'affirmations' : 'doubts';
     if (normalized === currentView) return;
     currentView = normalized;
+    updateBoatVideoSource(normalized);
     updateToggleState();
-    reseedBoatsForCurrentView({ highlight: true });
+    reseedBoatsForCurrentView();
     applyViewState();
   }
 
@@ -1257,6 +1258,11 @@ function animateDoubtCounter(el, targetValue) {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d', { alpha:true });
   const boatVideo = document.getElementById('boatVideo');
+  const BOAT_VIDEO_SOURCES = {
+    doubts: 'boat.mp4',
+    affirmations: 'boat-cheers.mp4'
+  };
+  let activeBoatVideoSrc = boatVideo?.getAttribute('src') || BOAT_VIDEO_SOURCES.doubts;
   const bgAudio = document.getElementById('bgAudio');
   const soundToggle = document.getElementById('soundToggle');
   const releaseBtn = document.getElementById('releaseBtn');
@@ -1313,43 +1319,76 @@ function updateSoundUI(on){ soundToggle.classList.toggle('active', !!on); soundT
 let videoReady = false;
 let videoRestartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 2;
+let videoReadyCheckTimeoutId = null;
 
-boatVideo.addEventListener('canplay', () => { 
-  videoReady = true; 
-  if(boatVideo.paused) boatVideo.play().catch(() => {}); 
-}, {once: true});
+boatVideo.addEventListener('canplay', () => {
+  videoReady = true;
+  if (videoReadyCheckTimeoutId) {
+    clearTimeout(videoReadyCheckTimeoutId);
+    videoReadyCheckTimeoutId = null;
+  }
+  if (boatVideo.paused) {
+    boatVideo.play().catch(() => {});
+  }
+});
 
 function checkAndRestartVideo() {
   if (!videoReady && videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
     console.warn(`Video not ready after timeout, attempting restart ${videoRestartAttempts + 1}/${MAX_RESTART_ATTEMPTS}`);
     videoRestartAttempts++;
-    
+
     const currentSrc = boatVideo.src;
     boatVideo.src = '';
     boatVideo.load();
     boatVideo.src = currentSrc + '?t=' + Date.now();
-    
+
     setTimeout(() => {
       boatVideo.play().catch(() => {
         console.error('Video restart failed');
       });
     }, 500);
-    
+
     if (videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
       setTimeout(checkAndRestartVideo, 8000);
     }
   }
 }
 
+function scheduleVideoReadyCheck() {
+  if (videoReadyCheckTimeoutId) {
+    clearTimeout(videoReadyCheckTimeoutId);
+  }
+  videoReadyCheckTimeoutId = setTimeout(() => {
+    if (!videoReady) {
+      checkAndRestartVideo();
+    }
+  }, 15000);
+}
+
+function updateBoatVideoSource(view) {
+  if (!boatVideo) return;
+  const desiredSrc = BOAT_VIDEO_SOURCES[view] || BOAT_VIDEO_SOURCES.doubts;
+  if (activeBoatVideoSrc === desiredSrc) return;
+
+  activeBoatVideoSrc = desiredSrc;
+  videoReady = false;
+  videoRestartAttempts = 0;
+
+  if (videoReadyCheckTimeoutId) {
+    clearTimeout(videoReadyCheckTimeoutId);
+    videoReadyCheckTimeoutId = null;
+  }
+
+  boatVideo.pause();
+  boatVideo.src = desiredSrc;
+  boatVideo.load();
+  boatVideo.play().catch(() => {});
+  scheduleVideoReadyCheck();
+}
+
 // Start immediately, don't wait
 boatVideo.play().catch(() => {});
-
-// Monitor for failures
-setTimeout(() => {
-  if (!videoReady) {
-    checkAndRestartVideo();
-  }
-}, 15000);
+scheduleVideoReadyCheck();
 
 /* ==== CHANGED: don’t start audio when clicking Enter ==== */
 let audioStarted = false;
