@@ -1232,25 +1232,6 @@ async function fetchTotalDoubts() {
   return parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0');
 }
 
-function coerceSupportArray(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      return coerceSupportArray(parsed);
-    } catch (_) {
-      return [];
-    }
-  }
-  if (typeof value === 'object') {
-    if (Array.isArray(value.notes)) return value.notes;
-    if (Array.isArray(value.support)) return value.support;
-    return [value];
-  }
-  return [];
-}
-
 async function fetchSupportNotes(limit = 400) {
   const headers = {
     apikey: SUPABASE_ANON,
@@ -1258,51 +1239,43 @@ async function fetchSupportNotes(limit = 400) {
     Accept: 'application/json'
   };
 
-  const attempts = [
-    {
-      name: 'support_notes',
-      url: `${SUPABASE_URL}/rest/v1/support_notes?select=id,text,attribution,date,active,created_at&order=created_at.desc.nullslast&limit=${limit}`,
-      parse: (rows = []) => rows.map((row, idx) => normalizeSupportItem(row, row, idx)).filter(Boolean)
-    },
-    {
-      name: 'content.support',
-      url: `${SUPABASE_URL}/rest/v1/content?select=support,created_at&limit=5`,
-      parse: (rows = []) => rows.flatMap((row, rowIndex) => {
-        return coerceSupportArray(row?.support).map((item, idx) => normalizeSupportItem(item, row, idx));
-      }).filter(Boolean)
-    },
-    {
-      name: 'doubts.support',
-      url: `${SUPABASE_URL}/rest/v1/doubts?select=id,support,created_at&support=not.is.null&order=created_at.desc&limit=${limit}`,
-      parse: (rows = []) => rows.flatMap((row, rowIndex) => {
-        return coerceSupportArray(row?.support).map((item, idx) => normalizeSupportItem(item, row, idx));
-      }).filter(Boolean)
-    }
-  ];
+  const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at,support,approved&support=is.true&approved=is.false&order=created_at.desc&limit=${limit}`;
 
-  for (const attempt of attempts) {
-    try {
-      const res = await fetch(attempt.url, { headers });
-      if (!res.ok) {
-        if (res.status !== 404) {
-          const text = await res.text().catch(() => '');
-          console.warn(`Support fetch attempt ${attempt.name} failed (${res.status}) ${text}`);
-        }
-        continue;
-      }
-
-      const data = await res.json();
-      const rows = Array.isArray(data) ? data : [data];
-      const parsed = attempt.parse(rows);
-      if (parsed.length) {
-        return parsed.slice(0, limit);
-      }
-    } catch (err) {
-      console.warn(`Support fetch attempt ${attempt.name} threw`, err);
-    }
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Support fetch failed (${res.status}) ${text}`);
   }
 
-  return [];
+  const data = await res.json();
+  const rows = Array.isArray(data) ? data : [data];
+
+  return rows
+    .map((row, idx) => {
+      const supportFlag = typeof row?.support === 'boolean'
+        ? row.support
+        : String(row?.support ?? '').trim().toLowerCase() === 'true';
+      const approvedFlag = typeof row?.approved === 'boolean'
+        ? row.approved
+        : String(row?.approved ?? '').trim().toLowerCase() === 'true';
+
+      if (!supportFlag || approvedFlag) return null;
+
+      const text = String(row?.doubt ?? '').trim();
+      if (!text) return null;
+
+      const createdAt = row?.created_at ? String(row.created_at) : new Date().toISOString();
+
+      return {
+        id: row?.id ? String(row.id) : `care-${idx + 1}`,
+        text,
+        attribution: '',
+        date: createdAt.slice(0, 10),
+        active: true
+      };
+    })
+    .filter(Boolean)
+    .slice(0, limit);
 }
 
 async function ensureSupportData(limit = 400) {
