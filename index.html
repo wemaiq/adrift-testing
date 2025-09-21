@@ -747,10 +747,10 @@ header.ripple span.figtree-adrift {
       <button type="button" class="view-toggle__option" data-view="affirmations" aria-pressed="false">Care</button>
     </div>
 
-    <aside class="support-column" aria-label="Community cheers" hidden>
+    <aside class="support-column" aria-label="Community care" hidden>
       <div class="support-column__header">
-        <h2 class="support-column__title">Cheers from the drift</h2>
-        <p class="support-column__subtitle">Tap a cheer to unfold a note of support.</p>
+        <h2 class="support-column__title">Care from the drift</h2>
+        <p class="support-column__subtitle">Tap a care note to unfold support.</p>
       </div>
       <ul class="support-column__list" id="supportList"></ul>
     </aside>
@@ -785,113 +785,137 @@ header.ripple span.figtree-adrift {
   const supportList = document.getElementById('supportList');
   const hintEl = document.querySelector('.hint');
 
-  const SUPPORT_CHEERS = [
-    {
-      id: 'cheer-01',
-      text: 'Someone is proud of the way you keep going, even when the tide feels against you.',
-      attribution: 'Shared by a fellow traveler',
-      date: '2025-09-10',
-      active: true
-    },
-    {
-      id: 'cheer-02',
-      text: 'Your questions are welcome here. Take a breath—none of this has to be solved tonight.',
-      attribution: 'A quiet voice at the shoreline',
-      date: '2025-08-29',
-      active: true
-    },
-    {
-      id: 'cheer-03',
-      text: 'Even when you feel stuck, your presence is already a gift. Someone notices the care you carry.',
-      attribution: 'Left in lantern light',
-      date: '2025-07-18',
-      active: true
-    },
-    {
-      id: 'cheer-04',
-      text: 'Rest when you can. The sea will keep moving, and you can rejoin it when your breath is steadier.',
-      attribution: 'From a midnight drift',
-      date: '2025-06-04',
-      active: true
-    },
-    {
-      id: 'cheer-05',
-      text: 'You have not failed by feeling uncertain. You are simply human, and that is more than enough.',
-      attribution: 'A companion across the water',
-      date: '2025-04-22',
-      active: true
-    },
-    {
-      id: 'cheer-06',
-      text: 'There is room for joy alongside the questions. Let a little light in, even if it’s only for a moment.',
-      attribution: 'Message folded into a sail',
-      date: '2025-03-15',
-      active: true
-    },
-    {
-      id: 'cheer-07',
-      text: 'You don’t have to carry every answer alone. Let the water hold some of the weight tonight.',
-      attribution: 'Anonymous driftmate',
-      date: '2025-02-02',
-      active: true
-    },
-    {
-      id: 'cheer-08',
-      text: 'Someone is celebrating the way you continue to care, even with a tired heart. That tenderness matters.',
-      attribution: 'Shared with gratitude',
-      date: '2024-12-19',
-      active: true
+  let SUPPORT_NOTES = [];
+  let ACTIVE_SUPPORT_NOTES = [];
+  let SHUFFLED_SUPPORT_NOTES = [];
+  let USED_SUPPORT_IDS = new Set();
+  let supportFetchPromise = null;
+
+  function normalizeSupportItem(raw = {}, fallbackRow = {}, index = 0) {
+    if (!raw) return null;
+
+    const boolKeys = ['active', 'enabled', 'is_active', 'isActive', 'published', 'visible', 'show', 'approved'];
+    let hasBooleanGate = false;
+    let passesGate = false;
+
+    for (const key of boolKeys) {
+      if (Object.prototype.hasOwnProperty.call(raw, key)) {
+        const value = raw[key];
+        if (typeof value === 'boolean') {
+          hasBooleanGate = true;
+          if (value) passesGate = true;
+        } else if (typeof value === 'string') {
+          const normalized = value.trim().toLowerCase();
+          if (normalized === 'true') {
+            hasBooleanGate = true;
+            passesGate = true;
+          } else if (normalized === 'false') {
+            hasBooleanGate = true;
+          }
+        }
+      }
     }
-  ];
 
-  const ACTIVE_CHEERS = SUPPORT_CHEERS.filter(item => item && item.active !== false);
-  let SHUFFLED_CHEERS = [];
-  let USED_CHEER_IDS = new Set();
+    if (hasBooleanGate && !passesGate) return null;
 
-  function initializeCheerPool() {
-    if (!ACTIVE_CHEERS.length) {
-      SHUFFLED_CHEERS = [];
-      USED_CHEER_IDS.clear();
+    const text = String(raw.text ?? raw.message ?? raw.body ?? raw.note ?? '').trim();
+    if (!text) return null;
+
+    const attribution = raw.attribution ?? raw.byline ?? raw.author ?? raw.source ?? '';
+    const idCandidate = raw.id ?? raw.uuid ?? raw.slug ?? `${fallbackRow?.id ?? 'support'}-${index}`;
+
+    let date = '';
+    const dateValue = raw.date ?? raw.display_date ?? raw.created_at ?? fallbackRow?.created_at ?? '';
+    if (typeof dateValue === 'string' && dateValue.trim()) {
+      date = dateValue.slice(0, 10);
+    } else if (dateValue instanceof Date) {
+      date = dateValue.toISOString().slice(0, 10);
+    } else if (typeof dateValue === 'number') {
+      const parsed = new Date(dateValue);
+      if (!Number.isNaN(parsed.getTime())) {
+        date = parsed.toISOString().slice(0, 10);
+      }
+    }
+
+    return {
+      id: String(idCandidate),
+      text,
+      attribution: attribution ? String(attribution) : '',
+      date,
+      active: true
+    };
+  }
+
+  function setSupportNotes(items = []) {
+    const normalized = [];
+    const seenIds = new Set();
+    const seenTexts = new Set();
+
+    for (const item of items) {
+      if (!item || !item.text) continue;
+      const idKey = item.id ? String(item.id) : '';
+      const textKey = item.text.replace(/\s+/g, ' ').trim().toLowerCase();
+
+      if (idKey && seenIds.has(idKey)) continue;
+      if (!idKey && textKey && seenTexts.has(textKey)) continue;
+
+      if (idKey) {
+        seenIds.add(idKey);
+      } else if (textKey) {
+        seenTexts.add(textKey);
+      }
+
+      normalized.push({ ...item, id: idKey || `support-${normalized.length + 1}` });
+    }
+
+    SUPPORT_NOTES = normalized;
+    ACTIVE_SUPPORT_NOTES = normalized.filter(item => item && item.active !== false);
+    initializeSupportPool();
+    renderSupportColumn();
+  }
+
+  function initializeSupportPool() {
+    if (!ACTIVE_SUPPORT_NOTES.length) {
+      SHUFFLED_SUPPORT_NOTES = [];
+      USED_SUPPORT_IDS.clear();
       return;
     }
 
-    let shuffled = shuffleArray(ACTIVE_CHEERS);
+    let shuffled = shuffleArray(ACTIVE_SUPPORT_NOTES);
     const randomStart = Math.floor(Math.random() * shuffled.length);
-    SHUFFLED_CHEERS = [...shuffled.slice(randomStart), ...shuffled.slice(0, randomStart)];
-    USED_CHEER_IDS.clear();
+    SHUFFLED_SUPPORT_NOTES = [...shuffled.slice(randomStart), ...shuffled.slice(0, randomStart)];
+    USED_SUPPORT_IDS.clear();
   }
 
-  function pickRandomCheer() {
-    if (!ACTIVE_CHEERS.length) {
+  function pickRandomCareNote() {
+    if (!ACTIVE_SUPPORT_NOTES.length) {
       return {
-        id: 'cheer-placeholder',
-        text: 'Cheers are on their way.',
+        id: 'care-placeholder',
+        text: 'Care notes are on their way.',
         date: new Date().toISOString().slice(0, 10),
         attribution: ''
       };
     }
 
-    if (!SHUFFLED_CHEERS.length || USED_CHEER_IDS.size >= SHUFFLED_CHEERS.length) {
-      initializeCheerPool();
+    if (!SHUFFLED_SUPPORT_NOTES.length || USED_SUPPORT_IDS.size >= SHUFFLED_SUPPORT_NOTES.length) {
+      initializeSupportPool();
     }
 
     let selected = null;
-    for (const cheer of SHUFFLED_CHEERS) {
-      if (!USED_CHEER_IDS.has(cheer.id)) {
-        selected = cheer;
+    for (const item of SHUFFLED_SUPPORT_NOTES) {
+      if (!USED_SUPPORT_IDS.has(item.id)) {
+        selected = item;
         break;
       }
     }
 
     if (!selected) {
-      selected = SHUFFLED_CHEERS[0];
+      selected = SHUFFLED_SUPPORT_NOTES[0];
     }
 
-    USED_CHEER_IDS.add(selected.id);
+    USED_SUPPORT_IDS.add(selected.id);
     return { ...selected };
   }
-
-  initializeCheerPool();
 
   let currentView = 'doubts';
 
@@ -918,12 +942,12 @@ header.ripple span.figtree-adrift {
     if (!supportList) return;
     supportList.textContent = '';
 
-    const activeItems = SUPPORT_CHEERS.filter(item => item && item.active !== false);
+    const activeItems = ACTIVE_SUPPORT_NOTES;
 
     if (!activeItems.length) {
       const emptyItem = document.createElement('li');
       emptyItem.className = 'support-column__empty';
-      emptyItem.textContent = 'Cheers are on their way.';
+      emptyItem.textContent = 'Care notes are on their way.';
       supportList.appendChild(emptyItem);
       return;
     }
@@ -935,8 +959,8 @@ header.ripple span.figtree-adrift {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'support-item';
-      button.dataset.cheerId = item.id;
-      button.addEventListener('click', () => openCheerNote(item));
+      button.dataset.careId = item.id;
+      button.addEventListener('click', () => openCareNote(item));
 
       const textSpan = document.createElement('span');
       textSpan.className = 'support-item__text';
@@ -960,13 +984,13 @@ header.ripple span.figtree-adrift {
         button.appendChild(meta);
       }
 
-      button.setAttribute('aria-label', `Open cheer: ${normalizeTextPreview(item.text, 140)}`);
+      button.setAttribute('aria-label', `Open care note: ${normalizeTextPreview(item.text, 140)}`);
       li.appendChild(button);
       supportList.appendChild(li);
     });
   }
 
-  function openCheerNote(item) {
+  function openCareNote(item) {
     const metaParts = [];
     if (item.date) {
       const parsed = new Date(item.date + 'T00:00:00');
@@ -984,13 +1008,16 @@ header.ripple span.figtree-adrift {
     createNote({
       x: innerWidth / 2,
       y: innerHeight / 2,
-      title: 'Community Cheer',
+      title: 'Community Care',
       bodyHTML,
       metaHTML,
       boat: null,
       startScale: 0.72
     });
   }
+
+  initializeSupportPool();
+  renderSupportColumn();
 
   function updateToggleState() {
     if (!viewToggleButtons.length) return;
@@ -1083,6 +1110,7 @@ header.ripple span.figtree-adrift {
   async function preloadData(){
     try{
       // Use existing fetchers so first frame has content
+      const supportPromise = ensureSupportData(400);
       APPROVED_DOUBTS = await fetchApprovedDoubts(600);
       if (APPROVED_DOUBTS.length === 0) {
         APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
@@ -1090,6 +1118,7 @@ header.ripple span.figtree-adrift {
       initializeDoubtPool();
       // Seed boats so render is immediate
       boats = Array.from({length: BOAT_COUNT}, () => new Boat(getCurrentVariant()));
+      await supportPromise;
       // Warm up counter silently
       const count = await fetchTotalDoubts().catch(()=>0);
       if (doubtCounter) {
@@ -1203,6 +1232,95 @@ async function fetchTotalDoubts() {
   return parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0');
 }
 
+function coerceSupportArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return coerceSupportArray(parsed);
+    } catch (_) {
+      return [];
+    }
+  }
+  if (typeof value === 'object') {
+    if (Array.isArray(value.notes)) return value.notes;
+    if (Array.isArray(value.support)) return value.support;
+    return [value];
+  }
+  return [];
+}
+
+async function fetchSupportNotes(limit = 400) {
+  const headers = {
+    apikey: SUPABASE_ANON,
+    Authorization: `Bearer ${SUPABASE_ANON}`,
+    Accept: 'application/json'
+  };
+
+  const attempts = [
+    {
+      name: 'support_notes',
+      url: `${SUPABASE_URL}/rest/v1/support_notes?select=id,text,attribution,date,active,created_at&order=created_at.desc.nullslast&limit=${limit}`,
+      parse: (rows = []) => rows.map((row, idx) => normalizeSupportItem(row, row, idx)).filter(Boolean)
+    },
+    {
+      name: 'content.support',
+      url: `${SUPABASE_URL}/rest/v1/content?select=support,created_at&limit=5`,
+      parse: (rows = []) => rows.flatMap((row, rowIndex) => {
+        return coerceSupportArray(row?.support).map((item, idx) => normalizeSupportItem(item, row, idx));
+      }).filter(Boolean)
+    },
+    {
+      name: 'doubts.support',
+      url: `${SUPABASE_URL}/rest/v1/doubts?select=id,support,created_at&support=not.is.null&order=created_at.desc&limit=${limit}`,
+      parse: (rows = []) => rows.flatMap((row, rowIndex) => {
+        return coerceSupportArray(row?.support).map((item, idx) => normalizeSupportItem(item, row, idx));
+      }).filter(Boolean)
+    }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt.url, { headers });
+      if (!res.ok) {
+        if (res.status !== 404) {
+          const text = await res.text().catch(() => '');
+          console.warn(`Support fetch attempt ${attempt.name} failed (${res.status}) ${text}`);
+        }
+        continue;
+      }
+
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : [data];
+      const parsed = attempt.parse(rows);
+      if (parsed.length) {
+        return parsed.slice(0, limit);
+      }
+    } catch (err) {
+      console.warn(`Support fetch attempt ${attempt.name} threw`, err);
+    }
+  }
+
+  return [];
+}
+
+async function ensureSupportData(limit = 400) {
+  if (supportFetchPromise) return supportFetchPromise;
+  supportFetchPromise = (async () => {
+    try {
+      const notes = await fetchSupportNotes(limit);
+      setSupportNotes(notes);
+      return notes;
+    } catch (err) {
+      console.error('Failed to load support notes:', err);
+      setSupportNotes([]);
+      return [];
+    }
+  })();
+  return supportFetchPromise;
+}
+
 function animateDoubtCounter(el, targetValue) {
   if (!el) return;
   const finalValue = Math.max(0, targetValue);
@@ -1291,7 +1409,7 @@ function animateDoubtCounter(el, targetValue) {
 
     if (hintEl) {
       hintEl.classList.remove('is-hidden');
-      hintEl.textContent = showingCheers ? 'Click boat to unfold a cheer' : 'Click boat to unfold a doubt';
+      hintEl.textContent = showingCheers ? 'Click boat to unfold a care note' : 'Click boat to unfold a doubt';
     }
 
     if (supportColumn) {
@@ -1302,7 +1420,7 @@ function animateDoubtCounter(el, targetValue) {
     document.body.classList.toggle('cheers-view', showingCheers);
 
     if (releaseBtn) {
-      const label = showingCheers ? 'Release a cheer' : 'Release your doubt';
+      const label = showingCheers ? 'Release a care note' : 'Release your doubt';
       releaseBtn.textContent = label;
       releaseBtn.setAttribute('aria-label', label);
     }
@@ -1530,7 +1648,7 @@ function pickRandomDoubt() {
       this.phase = Math.random() * Math.PI * 2;
       this.alpha = 0.95;
 
-      const baseEntry = this.variant === 'cheer' ? pickRandomCheer() : pickRandomDoubt();
+      const baseEntry = this.variant === 'cheer' ? pickRandomCareNote() : pickRandomDoubt();
       this.entry = { ...baseEntry, type: this.variant };
 
       this._h = BOAT_HEIGHT;
@@ -1827,7 +1945,7 @@ function pickRandomDoubt() {
     const meta = metaParts.length ? `<div class="note-meta">${escapeHtml(metaParts.join(' • '))}</div>` : '';
     const body = `<div class="note-text">${escapeHtml(entry.text || '').replace(/\n/g, '<br>')}</div>`;
 
-    const noteTitle = variant === 'cheer' ? 'Community Cheer' : 'Anonymous Doubt';
+    const noteTitle = variant === 'cheer' ? 'Community Care' : 'Anonymous Doubt';
     const maxSize = Math.min(350, window.innerWidth * 0.9);
 
     // Center notes on mobile devices (640px and below)
@@ -1843,8 +1961,8 @@ function pickRandomDoubt() {
     composerOpen = true;
 
     const isCheersView = currentView === 'affirmations';
-    const noteTitle = isCheersView ? 'Release a cheer' : 'Release your doubt';
-    const placeholderText = isCheersView ? 'Type your cheer (200 characters max)' : 'Type your doubt (200 characters max)';
+    const noteTitle = isCheersView ? 'Release a care note' : 'Release your doubt';
+    const placeholderText = isCheersView ? 'Type your care note (200 characters max)' : 'Type your doubt (200 characters max)';
 
     const body = `
       <textarea class="compose-field" id="releaseInput" maxlength="200" placeholder="${placeholderText}"></textarea>
@@ -1896,9 +2014,13 @@ function pickRandomDoubt() {
           type: variant
         };
         if (variant === 'cheer') {
-          b.entry.attribution = 'Shared from the drift';
-          ACTIVE_CHEERS.push(b.entry);
-          initializeCheerPool();
+          const careEntry = {
+            ...b.entry,
+            attribution: b.entry.attribution || 'Shared from the drift',
+            active: true
+          };
+          b.entry = careEntry;
+          setSupportNotes([...SUPPORT_NOTES, careEntry]);
         }
         b.x = innerWidth / 2;
         b.yBase = innerHeight / 2;
@@ -1908,7 +2030,7 @@ function pickRandomDoubt() {
         closeNote();
       } catch (err) {
         console.error('Release failed:', err);
-        const friendlyType = variant === 'cheer' ? 'cheer' : 'doubt';
+        const friendlyType = variant === 'cheer' ? 'care note' : 'doubt';
         alert(err.message || `Failed to release your ${friendlyType}.`);
       } finally {
         submit.disabled = false;
@@ -1982,25 +2104,27 @@ function pickRandomDoubt() {
      Boot flow
      ========= */
   (async function init(){
-try{
-  APPROVED_DOUBTS = await fetchApprovedDoubts(600);
-  if (APPROVED_DOUBTS.length === 0) {
-    console.warn('No approved doubts found; using placeholder.');
-    APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
-  }
-  
-  // Initialize the shuffled pool after loading doubts
-  initializeDoubtPool();
-  
-} catch(err){
-  console.error(err);
-  // Soft fallback if Supabase is unreachable
-  APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
-  initializeDoubtPool();
-} finally {
-  // Seed boats only after we have something to show
-  boats = Array.from({length: BOAT_COUNT}, () => new Boat(getCurrentVariant()));
-}
+    const supportPromise = ensureSupportData(400);
+    try{
+      APPROVED_DOUBTS = await fetchApprovedDoubts(600);
+      if (APPROVED_DOUBTS.length === 0) {
+        console.warn('No approved doubts found; using placeholder.');
+        APPROVED_DOUBTS = [{ id:'p1', text:'(waiting for first approved doubt…)', date:new Date().toISOString().slice(0,10) }];
+      }
+
+      // Initialize the shuffled pool after loading doubts
+      initializeDoubtPool();
+
+    } catch(err){
+      console.error(err);
+      // Soft fallback if Supabase is unreachable
+      APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
+      initializeDoubtPool();
+    } finally {
+      await supportPromise.catch(() => {});
+      // Seed boats only after we have something to show
+      boats = Array.from({length: BOAT_COUNT}, () => new Boat(getCurrentVariant()));
+    }
 
 // Update counter on load
 fetchTotalDoubts().then(count => {
