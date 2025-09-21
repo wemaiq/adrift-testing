@@ -844,6 +844,55 @@ header.ripple span.figtree-adrift {
     }
   ];
 
+  const ACTIVE_CHEERS = SUPPORT_CHEERS.filter(item => item && item.active !== false);
+  let SHUFFLED_CHEERS = [];
+  let USED_CHEER_IDS = new Set();
+
+  function initializeCheerPool() {
+    if (!ACTIVE_CHEERS.length) {
+      SHUFFLED_CHEERS = [];
+      USED_CHEER_IDS.clear();
+      return;
+    }
+
+    let shuffled = shuffleArray(ACTIVE_CHEERS);
+    const randomStart = Math.floor(Math.random() * shuffled.length);
+    SHUFFLED_CHEERS = [...shuffled.slice(randomStart), ...shuffled.slice(0, randomStart)];
+    USED_CHEER_IDS.clear();
+  }
+
+  function pickRandomCheer() {
+    if (!ACTIVE_CHEERS.length) {
+      return {
+        id: 'cheer-placeholder',
+        text: 'Cheers are on their way.',
+        date: new Date().toISOString().slice(0, 10),
+        attribution: ''
+      };
+    }
+
+    if (!SHUFFLED_CHEERS.length || USED_CHEER_IDS.size >= SHUFFLED_CHEERS.length) {
+      initializeCheerPool();
+    }
+
+    let selected = null;
+    for (const cheer of SHUFFLED_CHEERS) {
+      if (!USED_CHEER_IDS.has(cheer.id)) {
+        selected = cheer;
+        break;
+      }
+    }
+
+    if (!selected) {
+      selected = SHUFFLED_CHEERS[0];
+    }
+
+    USED_CHEER_IDS.add(selected.id);
+    return { ...selected };
+  }
+
+  initializeCheerPool();
+
   let currentView = 'doubts';
 
   function escapeHtml(str = '') {
@@ -957,9 +1006,7 @@ header.ripple span.figtree-adrift {
     if (normalized === currentView) return;
     currentView = normalized;
     updateToggleState();
-    if (currentView === 'affirmations') {
-      renderSupportColumn();
-    }
+    reseedBoatsForCurrentView({ highlight: true });
     applyViewState();
   }
 
@@ -970,6 +1017,24 @@ header.ripple span.figtree-adrift {
         if (targetView === currentView) return;
         setView(targetView);
       });
+    });
+  }
+
+  function getCurrentVariant() {
+    return currentView === 'affirmations' ? 'cheer' : 'doubt';
+  }
+
+  function reseedBoatsForCurrentView({ highlight = false } = {}) {
+    if (!boats || !boats.length) return;
+    const variant = getCurrentVariant();
+    const now = performance.now();
+
+    boats.forEach((boat) => {
+      boat.variant = variant;
+      boat.reset(true);
+      if (highlight) {
+        boat.highlightUntil = now + 4000;
+      }
     });
   }
 
@@ -1023,7 +1088,7 @@ header.ripple span.figtree-adrift {
       }
       initializeDoubtPool();
       // Seed boats so render is immediate
-      boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+      boats = Array.from({length: BOAT_COUNT}, () => new Boat(getCurrentVariant()));
       // Warm up counter silently
       const count = await fetchTotalDoubts().catch(()=>0);
       if (doubtCounter) {
@@ -1036,7 +1101,7 @@ header.ripple span.figtree-adrift {
       if (!APPROVED_DOUBTS?.length) {
         APPROVED_DOUBTS = [{ id:'p1', text:'(temporarily unable to load doubts)', date:new Date().toISOString().slice(0,10) }];
         initializeDoubtPool();
-        boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+        boats = Array.from({length: BOAT_COUNT}, () => new Boat(getCurrentVariant()));
       }
     }
   }
@@ -1213,18 +1278,22 @@ function animateDoubtCounter(el, targetValue) {
   function applyViewState() {
     const showingCheers = currentView === 'affirmations';
 
-    if (supportColumn) {
-      supportColumn.hidden = !showingCheers;
-    }
-
     if (canvas) {
-      canvas.classList.toggle('is-hidden', showingCheers);
-      canvas.setAttribute('aria-hidden', showingCheers ? 'true' : 'false');
+      canvas.classList.remove('is-hidden');
+      canvas.setAttribute('aria-hidden', 'false');
     }
 
     if (hintEl) {
-      hintEl.classList.toggle('is-hidden', showingCheers);
+      hintEl.classList.remove('is-hidden');
+      hintEl.textContent = showingCheers ? 'Click boat to unfold a cheer' : 'Click boat to unfold a doubt';
     }
+
+    if (supportColumn) {
+      supportColumn.hidden = true;
+      supportColumn.setAttribute('aria-hidden', 'true');
+    }
+
+    document.body.classList.toggle('cheers-view', showingCheers);
 
     if (releaseBtn) {
       const label = showingCheers ? 'Release a cheer' : 'Release your doubt';
@@ -1233,7 +1302,6 @@ function animateDoubtCounter(el, targetValue) {
     }
   }
 
-  renderSupportColumn();
   updateToggleState();
   applyViewState();
 
@@ -1408,7 +1476,10 @@ function pickRandomDoubt() {
 
 
   class Boat{
-    constructor(){ this.reset(true); }
+    constructor(variant = 'doubt'){
+      this.variant = variant;
+      this.reset(true);
+    }
     reset(initial = false) {
       // Use canvas dimensions directly (no DPR scaling)
       this.yBase = Math.random() * H * 0.75 + H * 0.1;
@@ -1419,10 +1490,10 @@ function pickRandomDoubt() {
 
       this.phase = Math.random() * Math.PI * 2;
       this.alpha = 0.95;
-      
-      // Get a fresh doubt when resetting (now guaranteed unique per session)
-      this.doubt = pickRandomDoubt();
-      
+
+      const baseEntry = this.variant === 'cheer' ? pickRandomCheer() : pickRandomDoubt();
+      this.entry = { ...baseEntry, type: this.variant };
+
       this._h = BOAT_HEIGHT;
       this._w = BOAT_HEIGHT * 1.8;
       this.vx = 0;
@@ -1515,10 +1586,16 @@ function pickRandomDoubt() {
 
       // FIXED: iOS-compatible blend mode rendering
       ctx.globalAlpha = a;
-      
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+
+      const supportsFilter = typeof ctx.filter !== 'undefined';
+      const prevFilter = supportsFilter ? ctx.filter : null;
+      if (supportsFilter) {
+        ctx.filter = this.variant === 'cheer' ? 'hue-rotate(68deg)' : 'none';
+      }
+
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      
+
       if(isIOS) {
         const dpr = window.devicePixelRatio || 1;
         const offCanvas = document.createElement('canvas');
@@ -1536,7 +1613,11 @@ function pickRandomDoubt() {
         ctx.drawImage(boatVideo, srcX,srcY,srcW,srcH, -displayW/2, -displayH/2, displayW, displayH);
         ctx.globalCompositeOperation = prev;
       }
-      
+
+      if (supportsFilter) {
+        ctx.filter = prevFilter;
+      }
+
       ctx.restore();
     }
     hit(mx,my){ 
@@ -1690,16 +1771,32 @@ function pickRandomDoubt() {
   function openNoteFromBoat(boat){
     boat.morphingIn = true;
     boat.morphT0 = performance.now();
-    const meta = `<div class="note-meta">${new Date(boat.doubt.date+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</div>`;
-    const body = `<div class="note-text">${boat.doubt.text}</div>`;
+    const entry = boat.entry || {};
+    const variant = boat.variant || entry.type || 'doubt';
+
+    const metaParts = [];
+    if (entry.date) {
+      const parsed = new Date(entry.date + 'T00:00:00');
+      if (!Number.isNaN(parsed.getTime())) {
+        metaParts.push(parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
+      }
+    }
+    if (variant === 'cheer' && entry.attribution) {
+      metaParts.push(entry.attribution);
+    }
+
+    const meta = metaParts.length ? `<div class="note-meta">${escapeHtml(metaParts.join(' • '))}</div>` : '';
+    const body = `<div class="note-text">${escapeHtml(entry.text || '').replace(/\n/g, '<br>')}</div>`;
+
+    const noteTitle = variant === 'cheer' ? 'Community Cheer' : 'Anonymous Doubt';
     const maxSize = Math.min(350, window.innerWidth * 0.9);
-    
+
     // Center notes on mobile devices (640px and below)
     const isMobile = window.innerWidth <= 640;
     const noteX = isMobile ? innerWidth / 2 : boat.x;
     const noteY = isMobile ? innerHeight / 2 : boat.y;
-    
-    createNote({ x:noteX, y:noteY, title:'Anonymous Doubt', bodyHTML:body, metaHTML:meta, boat, startScale:(boat._h/maxSize)*0.9 });
+
+    createNote({ x:noteX, y:noteY, title:noteTitle, bodyHTML:body, metaHTML:meta, boat, startScale:(boat._h/maxSize)*0.9 });
   }
 
   /* CTA → composer note */
@@ -1748,15 +1845,22 @@ function pickRandomDoubt() {
       submit.disabled = true;
       const prev = submit.textContent;
       submit.textContent = 'Releasing…';
+      const variant = getCurrentVariant();
 
       try {
         const { id, created_at, doubt } = await postDoubtToN8N(text);
-        const b = new Boat();
-        b.doubt = {
+        const b = new Boat(variant);
+        b.entry = {
           text: doubt,
           date: (created_at || new Date().toISOString()).slice(0, 10),
-          id
+          id,
+          type: variant
         };
+        if (variant === 'cheer') {
+          b.entry.attribution = 'Shared from the drift';
+          ACTIVE_CHEERS.push(b.entry);
+          initializeCheerPool();
+        }
         b.x = innerWidth / 2;
         b.yBase = innerHeight / 2;
         b.phase = 0;
@@ -1765,7 +1869,8 @@ function pickRandomDoubt() {
         closeNote();
       } catch (err) {
         console.error('Release failed:', err);
-        alert(err.message || 'Failed to release your doubt.');
+        const friendlyType = variant === 'cheer' ? 'cheer' : 'doubt';
+        alert(err.message || `Failed to release your ${friendlyType}.`);
       } finally {
         submit.disabled = false;
         submit.textContent = prev;
@@ -1855,7 +1960,7 @@ try{
   initializeDoubtPool();
 } finally {
   // Seed boats only after we have something to show
-  boats = Array.from({length: BOAT_COUNT}, ()=> new Boat());
+  boats = Array.from({length: BOAT_COUNT}, () => new Boat(getCurrentVariant()));
 }
 
 // Update counter on load
