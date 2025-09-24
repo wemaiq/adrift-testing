@@ -1217,11 +1217,14 @@ async function fetchApprovedDoubts(limit = 600) {
   }
   
   const totalCount = parseInt(countRes.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+  console.log('Total doubts in database:', totalCount); // Debug log
   
   // Calculate random offset
   const maxOffset = Math.max(0, totalCount - limit);
   const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
+  console.log('Random offset chosen:', randomOffset); // Debug log
   
+  // Fetch without any ORDER BY clause - just offset and limit
   const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&limit=${limit}&offset=${randomOffset}`;
   const res = await fetch(url, {
     headers: {
@@ -1237,6 +1240,7 @@ async function fetchApprovedDoubts(limit = 600) {
   }
   
   const rows = await res.json();
+  console.log('Sample of fetched dates:', rows.slice(0, 5).map(r => r.created_at)); // Debug log
   
   // Shuffle the fetched rows for extra randomization
   const shuffled = rows.sort(() => Math.random() - 0.5);
