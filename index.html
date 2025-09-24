@@ -1201,31 +1201,31 @@ header.ripple span.figtree-adrift {
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyanBudHB2Y2d6amhvd3JsbWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0OTk4ODcsImV4cCI6MjA3MjA3NTg4N30.sDdezusu8bp6lBp6hmU6QnJVIz0Et4VHp5giEpUTa40';
 
 async function fetchApprovedDoubts(limit = 600) {
-  // First, get the total count of approved doubts
-  const countUrl = `${SUPABASE_URL}/rest/v1/doubts?select=count&approved=is.true`;
-  const countRes = await fetch(countUrl, {
+  // Fetch ALL doubt IDs first
+  const idsUrl = `${SUPABASE_URL}/rest/v1/doubts?select=id&approved=is.true`;
+  const idsRes = await fetch(idsUrl, {
     headers: {
       apikey: SUPABASE_ANON,
       Authorization: `Bearer ${SUPABASE_ANON}`,
-      Accept: 'application/json',
-      Prefer: 'count=exact'
+      Accept: 'application/json'
     }
   });
   
-  if (!countRes.ok) {
-    throw new Error(`Count fetch failed (${countRes.status})`);
+  if (!idsRes.ok) {
+    throw new Error(`IDs fetch failed (${idsRes.status})`);
   }
   
-  const totalCount = parseInt(countRes.headers.get('Content-Range')?.split('/')[1] || '0', 10);
-  console.log('Total doubts in database:', totalCount); // Debug log
+  const allIds = await idsRes.json();
+  console.log('Total doubts available:', allIds.length);
   
-  // Calculate random offset
-  const maxOffset = Math.max(0, totalCount - limit);
-  const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
-  console.log('Random offset chosen:', randomOffset); // Debug log
+  // Randomly shuffle ALL IDs
+  const shuffledIds = allIds.sort(() => Math.random() - 0.5);
   
-  // Fetch without any ORDER BY clause - just offset and limit
-  const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&limit=${limit}&offset=${randomOffset}`;
+  // Take the first 600 from the shuffled list
+  const selectedIds = shuffledIds.slice(0, limit).map(item => item.id);
+  
+  // Fetch the full data for these specific IDs
+  const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&id=in.(${selectedIds.join(',')})`;
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_ANON,
@@ -1240,18 +1240,15 @@ async function fetchApprovedDoubts(limit = 600) {
   }
   
   const rows = await res.json();
-  console.log('Sample of fetched dates:', rows.slice(0, 5).map(r => r.created_at)); // Debug log
+  console.log('Sample of dates after random selection:', rows.slice(0, 5).map(r => r.created_at));
   
-  // Shuffle the fetched rows for extra randomization
-  const shuffled = rows.sort(() => Math.random() - 0.5);
-  
-  return shuffled.map(r => ({
+  return rows.map(r => ({
     id: r.id,
     text: r.doubt ?? '',
     date: (r.created_at || new Date().toISOString()).slice(0,10)
   })).filter(d => d.text && d.text.trim().length);
 }
-
+  
 async function fetchTotalDoubts() {
   const headers = {
     apikey: SUPABASE_ANON,
