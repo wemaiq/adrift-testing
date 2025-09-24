@@ -1200,8 +1200,29 @@ header.ripple span.figtree-adrift {
   const SUPABASE_URL  = 'https://lrjpntpvcgzjhowrlmit.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyanBudHB2Y2d6amhvd3JsbWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0OTk4ODcsImV4cCI6MjA3MjA3NTg4N30.sDdezusu8bp6lBp6hmU6QnJVIz0Et4VHp5giEpUTa40';
 
-async function fetchApprovedDoubts(limit = 500) {
-  const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&order=created_at.desc&limit=${limit}`;
+async function fetchApprovedDoubts(limit = 600) {
+  // First, get the total count of approved doubts
+  const countUrl = `${SUPABASE_URL}/rest/v1/doubts?select=count&approved=is.true`;
+  const countRes = await fetch(countUrl, {
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: `Bearer ${SUPABASE_ANON}`,
+      Accept: 'application/json',
+      Prefer: 'count=exact'
+    }
+  });
+  
+  if (!countRes.ok) {
+    throw new Error(`Count fetch failed (${countRes.status})`);
+  }
+  
+  const totalCount = parseInt(countRes.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+  
+  // Calculate random offset
+  const maxOffset = Math.max(0, totalCount - limit);
+  const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
+  
+  const url = `${SUPABASE_URL}/rest/v1/doubts?select=id,doubt,created_at&approved=is.true&limit=${limit}&offset=${randomOffset}`;
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_ANON,
@@ -1209,12 +1230,18 @@ async function fetchApprovedDoubts(limit = 500) {
       Accept: 'application/json'
     }
   });
+  
   if (!res.ok) {
     const text = await res.text().catch(()=> '');
     throw new Error(`Supabase fetch failed (${res.status}) ${text}`);
   }
+  
   const rows = await res.json();
-  return rows.map(r => ({
+  
+  // Shuffle the fetched rows for extra randomization
+  const shuffled = rows.sort(() => Math.random() - 0.5);
+  
+  return shuffled.map(r => ({
     id: r.id,
     text: r.doubt ?? '',
     date: (r.created_at || new Date().toISOString()).slice(0,10)
