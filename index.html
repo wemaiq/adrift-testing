@@ -1,5 +1,15 @@
 <!DOCTYPE html>
 <html lang="en"><head>
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-H3F6SJKBRK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-H3F6SJKBRK');
+</script>
+  
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
@@ -1248,7 +1258,7 @@ async function fetchApprovedDoubts(limit = 600) {
     date: (r.created_at || new Date().toISOString()).slice(0,10)
   })).filter(d => d.text && d.text.trim().length);
 }
-  
+
 async function fetchTotalDoubts() {
   const headers = {
     apikey: SUPABASE_ANON,
