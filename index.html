@@ -204,9 +204,39 @@
   #canvas{ position:fixed; inset:0; z-index:1; }
 
   header{ font-weight:400; position:fixed; top:18px; left:50%; transform:translateX(-50%); letter-spacing:0.25em; font-size:20px; font-family:"Dongle", ui-sans-serif, system-ui, sans-serif;text-transform:uppercase; text-align:center; user-select:none; z-index:5; }
-  .top-nav { position: fixed; top: 18px; right: 20px; z-index: 5; }
-  .top-nav a { color: #ececed; text-decoration: none; font-family: "Figtree", ui-sans-serif, system-ui, sans-serif; font-size: 14px; letter-spacing: 0.02em; padding: 8px 0; }
-  .top-nav a:hover, .top-nav a:focus-visible { color: rgba(236, 236, 237, 0.8); outline: none; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .top-nav {
+    position: fixed;
+    top: 18px;
+    right: 20px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+  }
+
+  .top-nav__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ececed;
+    text-decoration: none;
+    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    backdrop-filter: blur(3px);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+
+  .top-nav__link:hover,
+  .top-nav__link:focus-visible {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.14);
+    outline: none;
+  }
   .hint{ font-weight:400; position:fixed; left:20px; bottom:16px; color:#9aa0a8; font-size:12px; opacity:.7; user-select:none; background: rgba(255,255,255,.03); letter-spacing: 0.05em; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); backdrop-filter: blur(3px); z-index:5; }
 
   /* View toggle */
@@ -723,8 +753,9 @@ header.ripple span.figtree-adrift {
     right: 12px;
   }
 
-  .top-nav a {
-    font-size: 13px;
+  .top-nav__link {
+    font-size: 12px;
+    padding: 8px 11px;
   }
 
   /* Larger close button on mobile for better touch targets */
@@ -784,7 +815,7 @@ header.ripple span.figtree-adrift {
   <!-- Main content wrapper -->
   <div class="main-content">
     <nav class="top-nav" aria-label="Primary navigation">
-      <a href="about.html">About</a>
+      <a class="top-nav__link" href="about.html">About</a>
     </nav>
     <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
     <div class="view-toggle" role="group" aria-label="Choose between doubts and affirmations">
