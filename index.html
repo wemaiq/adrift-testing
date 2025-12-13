@@ -1869,13 +1869,20 @@ let videoReady = false;
 let videoRestartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 2;
 let videoReadyCheckTimeoutId = null;
+let restartCheckWasPending = false;
+
+function markVideoReadyIfPlayable() {
+  if (boatVideo && boatVideo.readyState >= 2) {
+    videoReady = true;
+    if (videoReadyCheckTimeoutId) {
+      clearTimeout(videoReadyCheckTimeoutId);
+      videoReadyCheckTimeoutId = null;
+    }
+  }
+}
 
 boatVideo.addEventListener('canplay', () => {
-  videoReady = true;
-  if (videoReadyCheckTimeoutId) {
-    clearTimeout(videoReadyCheckTimeoutId);
-    videoReadyCheckTimeoutId = null;
-  }
+  markVideoReadyIfPlayable();
   if (boatVideo.paused) {
     boatVideo.play().catch(() => {});
   }
@@ -1967,7 +1974,39 @@ addEventListener('keydown', ensurePlay);
 /* ==== end change ==== */
 
 soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { bgAudio.pause(); updateSoundUI(false); } });
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && !bgAudio.paused){ bgAudio.play().catch(()=>{}); } });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (videoReadyCheckTimeoutId) {
+      clearTimeout(videoReadyCheckTimeoutId);
+      videoReadyCheckTimeoutId = null;
+      restartCheckWasPending = true;
+    }
+    return;
+  }
+
+  if (!bgAudio.paused) { bgAudio.play().catch(() => {}); }
+  markVideoReadyIfPlayable();
+  boatVideo.play().catch(() => {});
+
+  if (!videoReady || restartCheckWasPending) {
+    scheduleVideoReadyCheck();
+  }
+  restartCheckWasPending = false;
+});
+
+addEventListener('pageshow', (event) => {
+  const navigationEntry = performance?.getEntriesByType?.('navigation')?.[0];
+  const isReload = navigationEntry ? navigationEntry.type === 'reload' : false;
+  if (isReload && !event.persisted) return;
+
+  markVideoReadyIfPlayable();
+  boatVideo.play().catch(() => {});
+  if (!bgAudio.paused) { bgAudio.play().catch(() => {}); }
+
+  if (!videoReady) {
+    scheduleVideoReadyCheck();
+  }
+});
 
   /* ===== Boats ===== */
   const CROP = {x:0, y:0, w:1, h:1};
