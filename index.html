@@ -19,6 +19,16 @@
 
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<script>
+  (() => {
+    const params = new URLSearchParams(window.location.search);
+    let sessionSkip = false;
+    try { sessionSkip = sessionStorage.getItem('skipIntro') === '1'; } catch (_) {}
+    if (params.get('skipIntro') === '1' || window.location.hash === '#app' || sessionSkip) {
+      document.documentElement.dataset.skipIntro = '1';
+    }
+  })();
+</script>
 
 <!-- SEO + AEO Metadata -->
 <title>Adrift — A Quiet Place to Share or Read Anonymous Doubts</title>
@@ -75,6 +85,9 @@
   html, body { height:100%; }
   body { margin:0; background:#000; overflow:hidden; font-family: ui-sans-serif, system-ui; color:#ececed; }
   canvas { display:block; width:100%; height:100%; }
+
+  html[data-skip-intro="1"] #intro-overlay { display: none; }
+  html[data-skip-intro="1"] .main-content { opacity: 1; }
 
   /* Intro overlay */
   #intro-overlay {
@@ -191,6 +204,9 @@
   #canvas{ position:fixed; inset:0; z-index:1; }
 
   header{ font-weight:400; position:fixed; top:18px; left:50%; transform:translateX(-50%); letter-spacing:0.25em; font-size:20px; font-family:"Dongle", ui-sans-serif, system-ui, sans-serif;text-transform:uppercase; text-align:center; user-select:none; z-index:5; }
+  .top-nav { position: fixed; top: 18px; right: 20px; z-index: 5; }
+  .top-nav a { color: #ececed; text-decoration: none; font-family: "Figtree", ui-sans-serif, system-ui, sans-serif; font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(3px); transition: background 0.2s ease, border-color 0.2s ease; }
+  .top-nav a:hover, .top-nav a:focus-visible { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); outline: none; }
   .hint{ font-weight:400; position:fixed; left:20px; bottom:16px; color:#9aa0a8; font-size:12px; opacity:.7; user-select:none; background: rgba(255,255,255,.03); letter-spacing: 0.05em; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); backdrop-filter: blur(3px); z-index:5; }
 
   /* View toggle */
@@ -723,13 +739,14 @@ header.ripple span.figtree-adrift {
 }
 
 
-/* Landscape mobile - spread out bottom elements */
+  /* Landscape mobile - spread out bottom elements */
 @media (max-height: 500px) and (orientation: landscape) {
   .hint { left: 10px; bottom: 10px;}
   .sound-toggle { right: 10px; bottom: 10px; }
   .cta-btn { padding: 16px 24px; }
   .cta-btn--floating { bottom: 16px; }
   header { top: 10px; }
+  .top-nav { top: 10px; right: 10px; }
   .view-toggle { top: 64px; }
 }
 
@@ -756,7 +773,10 @@ header.ripple span.figtree-adrift {
   </div>
 
   <!-- Main content wrapper -->
-  <div class="main-content">
+  <div class="main-content" id="app">
+    <nav class="top-nav" aria-label="Secondary navigation">
+      <a href="about.html">About</a>
+    </nav>
     <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
     <div class="view-toggle" role="group" aria-label="Choose between doubts and affirmations">
       <button type="button" class="view-toggle__option is-active" data-view="doubts" aria-pressed="true">Doubt</button>
@@ -808,6 +828,10 @@ header.ripple span.figtree-adrift {
   const supportColumn = document.querySelector('.support-column');
   const supportList = document.getElementById('supportList');
   const hintEl = document.querySelector('.hint');
+  const sessionSkipIntro = (() => {
+    try { return sessionStorage.getItem('skipIntro') === '1'; } catch (_) { return false; }
+  })();
+  const shouldSkipIntro = new URLSearchParams(window.location.search).get('skipIntro') === '1' || window.location.hash === '#app' || sessionSkipIntro;
 
   let SUPPORT_NOTES = [];
   let ACTIVE_SUPPORT_NOTES = [];
@@ -1188,7 +1212,40 @@ header.ripple span.figtree-adrift {
   }
   /* === end preload helpers === */
 
-  function revealMainContent() {
+  let enterStarted = false;
+
+  async function runEnterFlow(){
+    if (enterStarted) return;
+    if (enterBtn && enterBtn.disabled) return;
+    enterStarted = true;
+
+    setLoadingUI(true);
+    try {
+      await preloadAll();   // preload video, audio (buffer only), fonts, rain.js (best effort), data + seed boats
+    } finally {
+      setLoadingUI(false);
+    }
+
+    // Ensure the video is actually playing and mark it ready so boats draw immediately
+    try {
+      boatVideo.muted = true;
+      await boatVideo.play().catch(() => {});
+      if (boatVideo.readyState >= 2) {
+        videoReady = true; // let Boat.draw() run now
+      } else {
+        boatVideo.addEventListener('loadeddata', () => { videoReady = true; }, { once: true });
+      }
+    } catch (_) {}
+
+    // Safety: make sure we have boats before revealing
+    if (!boats || !boats.length) {
+      boats = Array.from({ length: BOAT_COUNT }, () => new Boat(getCurrentVariant()));
+    }
+
+    revealMainContent(); // fade intro only after we've armed drawing
+  }
+
+  function revealMainContent(immediate = false) {
     if (!introOverlay || introOverlay.classList.contains('fade-out')) return;
     if (introText) {
       introText.classList.add('fade-out-text');
@@ -1197,39 +1254,24 @@ header.ripple span.figtree-adrift {
     if (mainContent) {
       mainContent.classList.add('visible');
     }
+    const removalDelay = immediate ? 300 : 1200;
+    if (immediate) {
+      introOverlay.style.transitionDuration = '0.35s';
+      introOverlay.style.opacity = '0';
+    }
     setTimeout(() => {
       introOverlay.remove();
-    }, 1200);
+    }, removalDelay);
   }
 
   if (enterBtn) {
-    enterBtn.addEventListener('click', async () => {
-      if (enterBtn.disabled) return;
-      setLoadingUI(true);
-      try {
-        await preloadAll();   // preload video, audio (buffer only), fonts, rain.js (best effort), data + seed boats
-      } finally {
-  setLoadingUI(false);
-
-  // Ensure the video is actually playing and mark it ready so boats draw immediately
-  try {
-    boatVideo.muted = true;
-    await boatVideo.play().catch(() => {});
-    if (boatVideo.readyState >= 2) {
-      videoReady = true; // let Boat.draw() run now
-    } else {
-      boatVideo.addEventListener('loadeddata', () => { videoReady = true; }, { once: true });
-    }
-  } catch (_) {}
-
-  // Safety: make sure we have boats before revealing
-  if (!boats || !boats.length) {
-    boats = Array.from({ length: BOAT_COUNT }, () => new Boat(getCurrentVariant()));
+    enterBtn.addEventListener('click', runEnterFlow);
   }
 
-  revealMainContent(); // fade intro only after we've armed drawing
-}
-    });
+  if (shouldSkipIntro) {
+    try { sessionStorage.removeItem('skipIntro'); } catch (_) {}
+    revealMainContent(true);
+    runEnterFlow();
   }
 
   /* =====================
