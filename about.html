@@ -167,6 +167,16 @@
       color: transparent;
     }
 
+    .ripple a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .ripple a:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 6px;
+    }
+
     @keyframes rippleEffect {
       40% { opacity: .35; }
       50% { transform: translate3d(.5em, 0, 0) scale(1.1); text-shadow: 0 0 20px #fff; }
@@ -178,7 +188,11 @@
   <nav class="top-nav" aria-label="Secondary navigation">
     <a class="top-nav__link is-active" href="about.html" aria-current="page">About</a>
   </nav>
-  <header class="ripple" aria-label="Adrift logo"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
+  <header class="ripple" aria-label="Adrift logo">
+    <a class="logo-link" href="index.html?skipIntro=1#app" aria-label="Return to Adrift homepage" data-skip-intro-link>
+      <span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span>
+    </a>
+  </header>
   <div class="page">
     <div class="content">
       <p class="blurb">Adrift began as a quiet corner where you could release doubt without needing answers or explanations. It was simply a space to be honest, to be human, and to feel a little less alone.</p>
@@ -306,7 +320,7 @@
       { offset: 0.75, opacity: 1, transform: 'translate3d(0,0,0) scale(1)', textShadow: '0 0 0 #fff' }
     ];
 
-    const letters = [...header.querySelectorAll(':scope > span > span')];
+    const letters = [...header.querySelectorAll(':scope span > span')];
     const anims = letters.map((el, i) => {
       const a = el.animate(frames, { duration: 4000, fill: 'both', delay: i * 60 });
       a.pause();
