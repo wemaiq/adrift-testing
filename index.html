@@ -83,7 +83,16 @@
   }
 
   html, body { height:100%; }
-  body { margin:0; background:#000; overflow:hidden; font-family: ui-sans-serif, system-ui; color:#ececed; }
+  body {
+    margin:0;
+    background:#000;
+    overflow:hidden;
+    font-family: ui-sans-serif, system-ui;
+    color:#ececed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   canvas { display:block; width:100%; height:100%; }
 
   html[data-skip-intro="1"] #intro-overlay { display: none; }
