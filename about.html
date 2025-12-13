@@ -33,6 +33,16 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body.is-page-visible {
+      opacity: 1;
+    }
+
+    body.is-page-fading {
+      opacity: 0;
     }
     header {
       font-weight: 400;
@@ -94,11 +104,11 @@
       text-align: left;
     }
     .blurb {
-      font-size: 14.4px;
+      font-size: 16px;
       line-height: 1.8;
-      color: var(--muted);
+      color: rgb(255 255 255 / 76%);
       margin: 0 0 18px;
-      font-weight: 300;
+      font-weight: 400;
     }
     .support-link {
       display: inline-flex;
@@ -189,6 +199,44 @@
     <a class="back-link" href="index.html?skipIntro=1#app" aria-label="Back to Adrift homepage" data-skip-intro-link>← Back to homepage</a>
   </div>
   <script>
+  (() => {
+    const enablePageFade = () => {
+      const body = document.body;
+      requestAnimationFrame(() => body.classList.add('is-page-visible'));
+
+      const eligibleLink = (link) => {
+        const target = link.getAttribute('target');
+        if (target && target !== '_self') return false;
+        const href = link.getAttribute('href') || '';
+        if (!href || href.startsWith('#')) return false;
+        const url = new URL(href, window.location.href);
+        return url.origin === window.location.origin;
+      };
+
+      const handleTransition = (event) => {
+        const link = event.currentTarget;
+        if (!eligibleLink(link)) return;
+        event.preventDefault();
+        body.classList.remove('is-page-visible');
+        body.classList.add('is-page-fading');
+        setTimeout(() => { window.location.href = link.href; }, 200);
+      };
+
+      document.querySelectorAll('a[href]').forEach(link => {
+        link.addEventListener('click', handleTransition);
+      });
+
+      window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+          body.classList.add('is-page-visible');
+          body.classList.remove('is-page-fading');
+        }
+      });
+    };
+
+    enablePageFade();
+  })();
+
   (() => {
     const header = document.querySelector('header.ripple');
     if (!header) return;
