@@ -709,6 +709,24 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
   color: transparent;
 }
 
+header.ripple span > span {
+  animation: rippleEffect 4s ease;
+  animation-fill-mode: both;
+  animation-play-state: paused;
+}
+
+header.ripple:hover span > span,
+header.ripple:focus-within span > span {
+  animation-play-state: running;
+}
+
+header.ripple span > span:nth-child(1) { animation-delay: 0ms; }
+header.ripple span > span:nth-child(2) { animation-delay: 60ms; }
+header.ripple span > span:nth-child(3) { animation-delay: 120ms; }
+header.ripple span > span:nth-child(4) { animation-delay: 180ms; }
+header.ripple span > span:nth-child(5) { animation-delay: 240ms; }
+header.ripple span > span:nth-child(6) { animation-delay: 300ms; }
+
 .ripple a {
   color: inherit;
   text-decoration: none;
