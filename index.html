@@ -1905,7 +1905,24 @@ async function postToWorker(text, token){
 
   /* ====== Media autoplay ====== */
 const DEFAULT_VOL = 0.28;
-function startAudio(){ bgAudio.volume = DEFAULT_VOL; bgAudio.play().then(()=> updateSoundUI(true)).catch(()=>{}); }
+const AUDIO_START_DELAY_MS = 2000;
+let audioStartTimer = null;
+
+function startAudio(){
+  if (audioStartTimer || !bgAudio.paused) return;
+
+  audioStartTimer = setTimeout(() => {
+    audioStartTimer = null;
+    bgAudio.volume = DEFAULT_VOL;
+    bgAudio.play().then(() => updateSoundUI(true)).catch(() => {});
+  }, AUDIO_START_DELAY_MS);
+}
+
+function cancelScheduledAudioStart(){
+  if (!audioStartTimer) return;
+  clearTimeout(audioStartTimer);
+  audioStartTimer = null;
+}
 function updateSoundUI(on){ soundToggle.classList.toggle('active', !!on); soundToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); soundToggle.textContent = on ? 'Sound: On' : 'Sound: Off'; }
 
 let videoReady = false;
@@ -2016,7 +2033,7 @@ addEventListener('pointerdown', ensurePlay);
 addEventListener('keydown', ensurePlay);
 /* ==== end change ==== */
 
-soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { bgAudio.pause(); updateSoundUI(false); } });
+soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { cancelScheduledAudioStart(); bgAudio.pause(); updateSoundUI(false); } });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (videoReadyCheckTimeoutId) {
