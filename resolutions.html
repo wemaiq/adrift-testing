@@ -74,6 +74,13 @@
   #rain  { position:fixed; inset:0; z-index:2; pointer-events:none; }
   #canvas{ position:fixed; inset:0; z-index:1; }
 
+  #embers-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
   header{ font-weight:400; position:fixed; top:18px; left:50%; transform:translateX(-50%); letter-spacing:0.25em; font-size:20px; font-family:"Dongle", ui-sans-serif, system-ui, sans-serif;text-transform:uppercase; text-align:center; user-select:none; z-index:5; display:flex; flex-direction:column; align-items:center; gap:2px; }
 
   .new-badge {
@@ -434,6 +441,7 @@
 </style>
 </head>
 <body class="figtree-adrift is-page-visible">
+  <canvas id="embers-canvas"></canvas>
   <nav class="top-nav" aria-label="Primary navigation">
     <a class="top-nav__link" href="index.html?skipIntro=1#app">Back to Adrift</a>
   </nav>
@@ -441,7 +449,7 @@
 
   <!-- media -->
   <video id="boatVideo" src="lantern.mp4" loop="" muted="" playsinline="" preload="auto"></video>
-  <audio id="bgAudio" src="sound.mp3" loop="" preload="auto"></audio>
+  <audio id="bgAudio" src="starlight.mp3" loop="" preload="auto"></audio>
 
   <!-- layers -->
   <canvas id="rain" aria-hidden="true"></canvas>
@@ -452,7 +460,6 @@
   <button id="releaseBtn" class="cta-btn cta-btn--floating" aria-label="Release your resolution">Write your resolution</button>
   <footer class="site-footer">© 2025 Adrift. <a href="https://www.buymeacoffee.com/adrift" target="_blank" rel="noreferrer noopener">Help keep this alive.</a></footer>
 
-  <script src="./rain.js" defer=""></script>
 
 <script>
   (() => {
@@ -1217,7 +1224,7 @@
   });
 })();
 </script>
-
+<script src="./embers.js" defer></script>
 </body>
 </html>
   
