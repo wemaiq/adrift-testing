@@ -1051,6 +1051,7 @@ header.ripple span.figtree-adrift {
   const mainContent = document.querySelector('.main-content');
   const enterBtn = document.getElementById('enterBtn');
   const doubtCounter = document.getElementById('doubt-counter');
+  const rootEl = document.documentElement;
   const viewToggle = document.querySelector('.view-toggle');
   const viewToggleButtons = viewToggle ? viewToggle.querySelectorAll('.view-toggle__option') : [];
   const supportColumn = document.querySelector('.support-column');
@@ -1060,6 +1061,10 @@ header.ripple span.figtree-adrift {
     try { return sessionStorage.getItem('skipIntro') === '1'; } catch (_) { return false; }
   })();
   const shouldSkipIntro = new URLSearchParams(window.location.search).get('skipIntro') === '1' || window.location.hash === '#app' || sessionSkipIntro;
+
+  if (!shouldSkipIntro) {
+    rootEl.classList.add('intro-active');
+  }
 
   let SUPPORT_NOTES = [];
   let ACTIVE_SUPPORT_NOTES = [];
@@ -1489,6 +1494,9 @@ header.ripple span.figtree-adrift {
     }
     setTimeout(() => {
       introOverlay.remove();
+      if (rootEl) {
+        rootEl.classList.remove('intro-active');
+      }
     }, removalDelay);
   }
 

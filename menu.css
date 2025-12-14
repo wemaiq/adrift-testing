@@ -14,7 +14,7 @@
   right: 18px;
   width: var(--menu-size);
   height: var(--menu-size);
-  border-radius: 14px;
+  border-radius: 50%;
   border: 1px solid var(--menu-border);
   background: var(--menu-bg);
   color: var(--menu-color);
@@ -47,11 +47,10 @@
 .menu-toggle__bars {
   display: inline-flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  width: 22px;
-  height: 18px;
-  gap: 6px;
+  width: 18px;
+  height: 13px;
   transition: transform 0.25s ease;
 }
 
@@ -60,11 +59,12 @@
   height: 2px;
   background: currentColor;
   border-radius: 999px;
+  transform-origin: center;
   transition: transform 0.25s ease, opacity 0.2s ease;
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(1) {
-  transform: translateY(4px) rotate(45deg);
+  transform: translateY(5.5px) rotate(45deg);
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(2) {
@@ -72,7 +72,7 @@
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(3) {
-  transform: translateY(-4px) rotate(-45deg);
+  transform: translateY(-5.5px) rotate(-45deg);
 }
 
 .menu-overlay {
@@ -149,6 +149,11 @@
 .menu-open,
 .menu-open body {
   overflow: hidden;
+}
+
+.intro-active .menu-toggle {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .top-nav {
