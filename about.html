@@ -10,6 +10,7 @@
   <link rel="icon" type="image/svg+xml" sizes="16x16" href="favicon-adrift-16x16.svg">
   <link rel="icon" type="image/svg+xml" sizes="32x32" href="favicon-adrift-32x32.svg">
   <link rel="shortcut icon" href="favicon-adrift-32x32.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./menu.css">
   <style>
     :root {
       --bg: #000;
@@ -262,10 +263,23 @@
   </style>
 </head>
 <body>
-  <nav class="top-nav" aria-label="Secondary navigation">
-    <a class="top-nav__link is-active" href="about.html" aria-current="page">About</a>
-    <a class="top-nav__link" href="resolutions.html">Resolutions <span class="top-nav__tag">NEW</span></a>
-  </nav>
+  <button class="menu-toggle" aria-expanded="false" aria-controls="menuOverlay" aria-label="Open navigation">
+    <span class="menu-toggle__bars">
+      <span class="menu-toggle__bar"></span>
+      <span class="menu-toggle__bar"></span>
+      <span class="menu-toggle__bar"></span>
+    </span>
+  </button>
+  <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
+    <div class="menu-overlay__content">
+      <div class="menu-overlay__links" role="navigation" aria-label="Primary navigation">
+        <a class="menu-link" href="index.html?skipIntro=1#app">Home</a>
+        <a class="menu-link" href="about.html">About</a>
+        <a class="menu-link" href="resolutions.html">Resolutions <span class="menu-link__tag">NEW</span></a>
+      </div>
+      <div class="menu-overlay__hint">Tap anywhere to close</div>
+    </div>
+  </div>
 <header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
     <div class="page">
       <div class="content">
@@ -429,5 +443,6 @@ const letters = [...header.querySelectorAll(':scope > span > span')];
   });
 })();
 </script>
+<script src="./menu.js" defer></script>
 </body>
 </html>
