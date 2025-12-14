@@ -126,16 +126,19 @@
 }
 
 .menu-link__tag {
+  display: inline-flex;
+  align-items: center;
   margin-left: 10px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #ffffff;
+  background: rgb(252 171 43);
   color: #000000;
   font-size: 11px;
   letter-spacing: 0.08em;
   font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
+  transform: translateY(-4px);
 }
 
 .menu-overlay__hint {
