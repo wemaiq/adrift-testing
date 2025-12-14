@@ -2733,7 +2733,7 @@ fetchTotalDoubts().then(count => {
     { offset: 0.75, opacity: 1, transform: 'translate3d(0,0,0) scale(1)', textShadow: '0 0 0 #fff' }
   ];
 
-const letters = [...header.querySelectorAll(':scope > span > span')];
+const letters = [...header.querySelectorAll(':scope a span span')];
   const anims = letters.map((el, i) => {
     const a = el.animate(frames, {
       duration: 4000,
