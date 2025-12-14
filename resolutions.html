@@ -149,6 +149,12 @@
   .sound-toggle.active{ color:#ececed; border-color: rgba(255,255,255,.12); }
   .sound-toggle:focus-visible{ outline:2px solid rgba(255, 200, 100, 0.25); outline-offset:2px; }
 
+  @media (max-width: 640px) {
+    .hint { bottom: 40px; }
+    .sound-toggle { bottom: 40px; }
+    .site-footer { bottom: 16px; }
+  }
+
   /* Center-bottom CTA */
   .cta-btn{
     padding:28px 36px; border-radius:9999px; font-size:13px; line-height:1; color:#fff;
@@ -423,8 +429,8 @@
   }
 
   @media (max-height: 500px) and (orientation: landscape) {
-    .hint { left: 10px; bottom: 10px;}
-    .sound-toggle { right: 10px; bottom: 10px; }
+    .hint { left: 10px; bottom: 40px;}
+    .sound-toggle { right: 10px; bottom: 40px; }
     .cta-btn { padding: 16px 24px; }
     .cta-btn--floating { bottom: 52px; }
     header { top: 10px; }
