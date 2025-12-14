@@ -58,22 +58,7 @@
       user-select: none;
       z-index: 5;
     }
-    .logo-link {
-      color: var(--text);
-      text-decoration: none;
-      display: inline-flex;
-      gap: 0.05em;
-      letter-spacing: 0.14em;
-      transition: color 0.25s ease, text-shadow 0.25s ease;
-    }
-    .logo-link span { display: inline-flex; gap: 0.02em; }
-    .logo-link span span { display: inline-block; }
-    .logo-link:hover,
-    .logo-link:focus-visible {
-      color: #fff;
-      text-shadow: 0 0 12px rgba(255,255,255,0.34);
-      outline: none;
-    }
+    
     .top-nav {
       position: fixed;
       top: 18px;
@@ -267,11 +252,7 @@
   <nav class="top-nav" aria-label="Secondary navigation">
     <a class="top-nav__link is-active" href="about.html" aria-current="page">About</a>
   </nav>
-  <header class="ripple" aria-label="Adrift logo">
-    <a class="logo-link" href="index.html?skipIntro=1#app" aria-label="Return to Adrift homepage" data-skip-intro-link>
-      <span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span>
-    </a>
-  </header>
+<header class="ripple"><span><span>a</span><span>d</span><span>r</span><span>i</span><span>f</span><span>t</span></span></header>
     <div class="page">
       <div class="content">
         <p class="blurb">Adrift began as a quiet corner where you could release doubt without needing answers or explanations. It was simply a space to be honest, to be human, and to feel a little less alone.</p>
