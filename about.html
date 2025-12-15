@@ -29,7 +29,7 @@
       font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
       font-size: 16px;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -112,7 +112,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 32px;
       min-height: 100vh;
     }
@@ -122,10 +121,9 @@
       text-align: left;
     }
     .site-footer {
-      position: fixed;
-      left: 50%;
-      bottom: 16px;
-      transform: translateX(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-size: 12px;
       letter-spacing: 0.05em;
       color: #9aa0a8;
@@ -135,7 +133,8 @@
       border: 1px solid rgba(255,255,255,.04);
       background: rgba(255,255,255,.02);
       backdrop-filter: blur(3px);
-      white-space: nowrap;
+      margin: 24px auto 32px;
+      align-self: center;
     }
     .site-footer a {
       color: #b7bdc5;
@@ -301,7 +300,6 @@
         </a>
       </div>
       </div>
-      <a class="back-link" href="index.html?skipIntro=1#app" aria-label="Back to Adrift homepage" data-skip-intro-link>← Back to homepage</a>
     </div>
     <footer class="site-footer">© 2025 Adrift. <a href="https://www.buymeacoffee.com/adrift" target="_blank" rel="noreferrer noopener">Help keep this alive.</a></footer>
   <script>
