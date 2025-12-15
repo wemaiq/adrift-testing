@@ -52,6 +52,7 @@
   width: 18px;
   height: 12px;
   transition: transform 0.25s ease;
+  position: relative;
 }
 
 .menu-toggle__bar {
@@ -61,10 +62,13 @@
   border-radius: 999px;
   transform-origin: center;
   transition: transform 0.25s ease, opacity 0.2s ease;
+  position: relative;
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(1) {
-  transform: translateY(6px) rotate(45deg);
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(2) {
@@ -72,7 +76,9 @@
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(3) {
-  transform: translateY(-6px) rotate(-45deg);
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
 }
 
 .menu-overlay {
