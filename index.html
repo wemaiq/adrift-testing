@@ -904,8 +904,8 @@ header.ripple span.figtree-adrift {
   <!-- Intro overlay -->
  <div id="intro-overlay">
     <div class="intro-content">
-      <div id="doubt-counter" aria-live="polite" data-start-value="0">0 boats released</div>
-      <p id="intro-text">Adrift is a quiet space where doubts become paper boats and drift together across a shared sea.</p>
+      <div id="doubt-counter" aria-live="polite" data-start-value="0">0 notes released</div>
+      <p id="intro-text">Adrift is a quiet space where doubt, care, and intention drift together.</p>
       <button id="enterBtn" class="cta-btn intro-enter-btn" type="button">Enter</button>
     </div>
   </div>
@@ -1414,7 +1414,7 @@ header.ripple span.figtree-adrift {
       if (doubtCounter) {
         doubtCounter.style.visibility = 'visible';
         if (count > 0) animateDoubtCounter(doubtCounter, count);
-        else doubtCounter.textContent = '0 boats released';
+        else doubtCounter.textContent = '0 notes released';
       }
     } catch(err){
       console.error('Data preload failed:', err);
@@ -1672,7 +1672,7 @@ function animateDoubtCounter(el, targetValue) {
   const finalValue = Math.max(0, targetValue);
   const startValue = Number(el.dataset.startValue || 0);
   const formatter = new Intl.NumberFormat();
-  const formatValue = (value) => `${formatter.format(value)} boats released`;
+  const formatValue = (value) => `${formatter.format(value)} notes released`;
 
   if (finalValue <= startValue) {
     el.textContent = formatValue(finalValue);
@@ -2831,7 +2831,7 @@ fetchTotalDoubts().then(count => {
   if (count > 0) {
     animateDoubtCounter(doubtCounter, count);
   } else {
-    doubtCounter.textContent = '0 boats released';
+    doubtCounter.textContent = '0 notes released';
   }
 }).catch(() => {
   if (doubtCounter) doubtCounter.style.visibility = 'hidden';
