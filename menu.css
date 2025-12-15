@@ -64,7 +64,7 @@
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(1) {
-  transform: translateY(5.5px) rotate(45deg);
+  transform: translateY(6px) rotate(45deg);
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(2) {
@@ -72,7 +72,7 @@
 }
 
 .menu-open .menu-toggle__bars .menu-toggle__bar:nth-child(3) {
-  transform: translateY(-5.5px) rotate(-45deg);
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 .menu-overlay {
@@ -106,7 +106,7 @@
 .menu-overlay__links {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .menu-link {
