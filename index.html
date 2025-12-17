@@ -2189,84 +2189,83 @@ addEventListener('pageshow', (event) => {
   const OPACITY_MAX = 0.95;
 
   // Holds fetched approved doubts and session tracking
-let APPROVED_DOUBTS = [];
-let USED_DOUBT_IDS = new Set(); // Track used doubts this session
-let SHUFFLED_DOUBTS = []; // Pre-shuffled pool for current session
+  let APPROVED_DOUBTS = [];
+  let USED_DOUBT_IDS = new Set(); // Track used doubts this session
+  let SHUFFLED_DOUBTS = []; // Pre-shuffled pool for current session
 
-function shuffleArray(array) {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
-function initializeDoubtPool() {
-  // Double shuffle for more randomness
-  let shuffled = shuffleArray(APPROVED_DOUBTS);
-  
-  // Start from a random position in the shuffled array
-  const randomStart = Math.floor(Math.random() * shuffled.length);
-  shuffled = [...shuffled.slice(randomStart), ...shuffled.slice(0, randomStart)];
-  
-  SHUFFLED_DOUBTS = shuffled;
-  USED_DOUBT_IDS.clear();
-  console.log('Initialized shuffled doubt pool:', SHUFFLED_DOUBTS.length, 'doubts');
-}
-
-function pickRandomDoubt() {
-  if (APPROVED_DOUBTS.length === 0) {
-    // Safe placeholder if fetch returns nothing (or before it completes)
-    return { text: "…", date: new Date().toISOString().slice(0,10), id: "placeholder" };
-  }
-
-  // If we've used all doubts, reinitialize the pool
-  if (USED_DOUBT_IDS.size >= APPROVED_DOUBTS.length) {
-    console.log('All doubts used, reshuffling pool');
-    initializeDoubtPool();
-  }
-
-  // Find the next unused doubt from our shuffled pool
-  let selectedDoubt = null;
-  for (const doubt of SHUFFLED_DOUBTS) {
-    if (!USED_DOUBT_IDS.has(doubt.id)) {
-      selectedDoubt = doubt;
-      USED_DOUBT_IDS.add(selectedDoubt.id);
-      break;
+  function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
+    return shuffled;
   }
 
-  // Fallback (shouldn't happen with the logic above)
-  if (!selectedDoubt) {
-    selectedDoubt = SHUFFLED_DOUBTS[0];
-    USED_DOUBT_IDS.add(selectedDoubt.id);
+  function initializeDoubtPool() {
+    // Double shuffle for more randomness
+    let shuffled = shuffleArray(APPROVED_DOUBTS);
+
+    // Start from a random position in the shuffled array
+    const randomStart = Math.floor(Math.random() * shuffled.length);
+    shuffled = [...shuffled.slice(randomStart), ...shuffled.slice(0, randomStart)];
+
+    SHUFFLED_DOUBTS = shuffled;
+    USED_DOUBT_IDS.clear();
+    console.log('Initialized shuffled doubt pool:', SHUFFLED_DOUBTS.length, 'doubts');
   }
 
-  return selectedDoubt;
-}
+  function pickRandomDoubt() {
+    if (APPROVED_DOUBTS.length === 0) {
+      // Safe placeholder if fetch returns nothing (or before it completes)
+      return { text: "…", date: new Date().toISOString().slice(0,10), id: "placeholder" };
+    }
 
+    // If we've used all doubts, reinitialize the pool
+    if (USED_DOUBT_IDS.size >= APPROVED_DOUBTS.length) {
+      console.log('All doubts used, reshuffling pool');
+      initializeDoubtPool();
+    }
 
-  async function refreshDoubtPool() {
-  try {
-    const freshDoubts = await fetchApprovedDoubts(80);
-    if (freshDoubts.length > 0) {
-      const oldLength = APPROVED_DOUBTS.length;
-      APPROVED_DOUBTS = freshDoubts;
-      
-      // Only reinitialize if we got significantly more doubts
-      if (freshDoubts.length > oldLength * 1.2) {
-        initializeDoubtPool();
-        console.log('Refreshed and reshuffled doubt pool:', APPROVED_DOUBTS.length, 'doubts');
-      } else {
-        console.log('Refreshed doubt pool:', APPROVED_DOUBTS.length, 'doubts');
+    // Find the next unused doubt from our shuffled pool
+    let selectedDoubt = null;
+    for (const doubt of SHUFFLED_DOUBTS) {
+      if (!USED_DOUBT_IDS.has(doubt.id)) {
+        selectedDoubt = doubt;
+        USED_DOUBT_IDS.add(selectedDoubt.id);
+        break;
       }
     }
-  } catch (err) {
-    console.error('Failed to refresh doubts:', err);
-    // Keep using existing doubts if refresh fails
+
+    // Fallback (shouldn't happen with the logic above)
+    if (!selectedDoubt) {
+      selectedDoubt = SHUFFLED_DOUBTS[0];
+      USED_DOUBT_IDS.add(selectedDoubt.id);
+    }
+
+    return selectedDoubt;
   }
-}
+
+  async function refreshDoubtPool() {
+    try {
+      const freshDoubts = await fetchApprovedDoubts(80);
+      if (freshDoubts.length > 0) {
+        const oldLength = APPROVED_DOUBTS.length;
+        APPROVED_DOUBTS = freshDoubts;
+
+        // Only reinitialize if we got significantly more doubts
+        if (freshDoubts.length > oldLength * 1.2) {
+          initializeDoubtPool();
+          console.log('Refreshed and reshuffled doubt pool:', APPROVED_DOUBTS.length, 'doubts');
+        } else {
+          console.log('Refreshed doubt pool:', APPROVED_DOUBTS.length, 'doubts');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh doubts:', err);
+      // Keep using existing doubts if refresh fails
+    }
+  }
 
 
   class Boat{
