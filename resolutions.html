@@ -602,12 +602,21 @@
     }
   }
 
-  boatVideo.addEventListener('canplay', () => {
-    markVideoReadyIfPlayable();
-    if (boatVideo.paused) {
-      boatVideo.play().catch(() => {});
-    }
-  });
+// Immediately mark readiness in case the video is already buffered
+markVideoReadyIfPlayable();
+
+boatVideo.addEventListener('loadeddata', markVideoReadyIfPlayable, { once:true });
+boatVideo.addEventListener('canplay', () => {
+  markVideoReadyIfPlayable();
+  if (boatVideo.paused) {
+    boatVideo.play().catch(() => {});
+  }
+});
+
+boatVideo.addEventListener('error', () => {
+  console.error('Lantern video errored, retrying with cache bust');
+  checkAndRestartVideo();
+});
 
   function checkAndRestartVideo() {
     if (!videoReady && videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
