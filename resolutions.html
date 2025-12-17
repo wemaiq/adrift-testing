@@ -694,6 +694,188 @@
   const OPACITY_MIN = 0.35;
   const OPACITY_MAX = 0.95;
 
+  /* ===== Supabase config (READ) ===== */
+  const SUPABASE_URL  = 'https://lrjpntpvcgzjhowrlmit.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyanBudHB2Y2d6amhvd3JsbWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0OTk4ODcsImV4cCI6MjA3MjA3NTg4N30.sDdezusu8bp6lBp6hmU6QnJVIz0Et4VHp5giEpUTa40';
+
+  async function fetchApprovedResolutions(limit = 80) {
+    const headers = {
+      apikey: SUPABASE_ANON,
+      Authorization: `Bearer ${SUPABASE_ANON}`,
+      Accept: 'application/json'
+    };
+
+    const url = `${SUPABASE_URL}/rest/v1/doubts` +
+      `?select=id,doubt,created_at,resolution` +
+      `&approved=is.null` +
+      `&support=is.null` +
+      `&resolution=is.true` +
+      `&order=created_at.desc` +
+      `&limit=${limit}`;
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Resolution fetch failed (${res.status}) ${text}`);
+    }
+
+    const data = await res.json();
+    const rows = Array.isArray(data) ? data : [data];
+
+    return rows
+      .map((row, idx) => {
+        const text = String(row?.doubt ?? '').trim();
+        if (!text) return null;
+
+        const createdAt = row?.created_at ? String(row.created_at) : new Date().toISOString();
+
+        return {
+          id: row?.id ? String(row.id) : `resolution-${idx + 1}`,
+          text,
+          date: createdAt.slice(0, 10)
+        };
+      })
+      .filter(Boolean)
+      .slice(0, limit);
+  }
+
+  /* ===== Turnstile + Worker intake (WRITE) ===== */
+  const TURNSTILE_SITE_KEY = '0x4AAAAAAB3yYAwiY5okqJtL';
+  const WORKER_URL = 'https://adrift-intake.hiwemaiq.workers.dev';
+  let captchaWidgetId = null;
+  let captchaToken = null;
+  let turnstileContainer = null;
+  let tsRenderAttempts = 0;
+  const TS_MAX_ATTEMPTS = 2;
+
+  function renderTurnstileInvisible(mountSelector) {
+    const mount = document.querySelector(mountSelector);
+    if (!mount) return;
+
+    turnstileContainer = mount;
+
+    if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+      setTimeout(() => renderTurnstileInvisible(mountSelector), 100);
+      return;
+    }
+
+    try {
+      if (captchaWidgetId !== null && window.turnstile?.remove) {
+        try {
+          window.turnstile.remove(captchaWidgetId);
+        } catch (_) {}
+        captchaWidgetId = null;
+      }
+
+      captchaToken = null;
+
+      if (!document.body.contains(mount)) {
+        return;
+      }
+
+      captchaWidgetId = window.turnstile.render(mount, {
+        sitekey: TURNSTILE_SITE_KEY,
+        size: 'invisible',
+        callback: (t) => {
+          captchaToken = t;
+          tsRenderAttempts = 0;
+        },
+        'expired-callback': () => {
+          captchaToken = null;
+          if (window.turnstile &&
+              captchaWidgetId !== null &&
+              turnstileContainer &&
+              document.body.contains(turnstileContainer)) {
+            try { window.turnstile.reset(captchaWidgetId); } catch (_) {}
+          }
+        },
+        'error-callback': () => {
+          captchaToken = null;
+          if (tsRenderAttempts < TS_MAX_ATTEMPTS &&
+              turnstileContainer &&
+              document.body.contains(turnstileContainer)) {
+            tsRenderAttempts++;
+            setTimeout(() => renderTurnstileInvisible(mountSelector), 400);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[TS] render error:', e);
+    }
+  }
+
+  async function getTurnstileToken() {
+    for (let i = 0; i < 60 && captchaWidgetId === null; i++) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    if (!window.turnstile || captchaWidgetId === null) {
+      console.warn('[TS] Widget not available');
+      return null;
+    }
+
+    if (captchaToken) {
+      return captchaToken;
+    }
+
+    try {
+      await window.turnstile.execute(captchaWidgetId);
+    } catch (e) {
+      console.warn('[TS] Execute failed:', e);
+      return null;
+    }
+
+    for (let i = 0; i < 30; i++) {
+      if (captchaToken) {
+        return captchaToken;
+      }
+
+      try {
+        const response = window.turnstile.getResponse?.(captchaWidgetId);
+        if (response) {
+          captchaToken = response;
+          return response;
+        }
+      } catch (_) {}
+
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    console.warn('[TS] Token timeout');
+    return null;
+  }
+
+  function resetTurnstile() {
+    if (window.turnstile &&
+        captchaWidgetId !== null &&
+        turnstileContainer &&
+        document.body.contains(turnstileContainer)) {
+      try { window.turnstile.reset(captchaWidgetId); } catch (_) {}
+    }
+    captchaToken = null;
+  }
+
+  async function postToWorker(text, token){
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, "cf-turnstile-response": token, type: 'resolution' })
+    });
+
+    if (res.status === 204) return true;
+
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+
+    if (!res.ok || data?.ok !== true) {
+      const msg = data?.error || `Worker request failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return true;
+  }
+
   let APPROVED_RESOLUTIONS = [];
   let USED_RESOLUTION_IDS = new Set();
   let SHUFFLED_RESOLUTIONS = [];
@@ -1095,6 +1277,9 @@ if (isWebKit) {
 
     const body = `
       <textarea class="compose-field" id="releaseInput" maxlength="200" placeholder="${placeholderText}"></textarea>
+<div id="cf-turnstile-container"
+     style="position:absolute; left:0; bottom:0; width:1px; height:1px; opacity:0.01;"
+     aria-hidden="true"></div>
       <div class="compose-foot">
         <div><span id="charCount">0</span>/200</div>
         <button class="pill-btn" id="submitResolution" type="button">Release</button>
@@ -1116,6 +1301,10 @@ if (isWebKit) {
     const count = document.getElementById('charCount');
     const submit = document.getElementById('submitResolution');
 
+    setTimeout(() => {
+      renderTurnstileInvisible('#cf-turnstile-container');
+    }, 50);
+
     input.addEventListener('input', () => {
       count.textContent = input.value.length;
     });
@@ -1133,6 +1322,23 @@ if (isWebKit) {
       submit.textContent = 'Releasing…';
 
       try {
+        const BYPASS_TS = false;
+
+        if (!BYPASS_TS) {
+          captchaToken = await getTurnstileToken();
+          if (!captchaToken) {
+            alert('Please complete the quick check, then try again.');
+            submit.disabled = false;
+            submit.textContent = prev;
+            return;
+          }
+        } else {
+          captchaToken = 'BYPASS_TEST_TOKEN';
+        }
+
+        await postToWorker(text, captchaToken);
+        resetTurnstile();
+
         const b = new Boat();
         b.entry = {
           text,
@@ -1215,16 +1421,15 @@ if (isWebKit) {
   addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeNote(); } });
 
   (async function init(){
-    APPROVED_RESOLUTIONS = [
-      { id:'1', text:'Learn to cook one new recipe every month', date:'2025-01-01' },
-      { id:'2', text:'Read a book every week', date:'2025-01-01' },
-      { id:'3', text:'Exercise three times a week', date:'2025-01-01' },
-      { id:'4', text:'Meditate every morning', date:'2025-01-01' },
-      { id:'5', text:'Save money for a dream trip', date:'2025-01-01' },
-      { id:'6', text:'Learn a new language', date:'2025-01-01' },
-      { id:'7', text:'Call a friend once a week', date:'2025-01-01' },
-      { id:'8', text:'Write in my journal daily', date:'2025-01-01' },
-    ];
+    try {
+      APPROVED_RESOLUTIONS = await fetchApprovedResolutions(80);
+      if (APPROVED_RESOLUTIONS.length === 0) {
+        APPROVED_RESOLUTIONS = [{ id:'p1', text:'(waiting for first approved resolution…)', date:new Date().toISOString().slice(0,10) }];
+      }
+    } catch (err) {
+      console.error('Failed to load resolutions:', err);
+      APPROVED_RESOLUTIONS = [{ id:'p1', text:'(temporarily unable to load resolutions)', date:new Date().toISOString().slice(0,10) }];
+    }
 
     initializeResolutionPool();
     boats = Array.from({length: BOAT_COUNT}, () => new Boat());
