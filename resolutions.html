@@ -576,7 +576,6 @@
     canvas.height = H * dpr;
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
   }
   addEventListener('resize', resize);
@@ -602,21 +601,12 @@
     }
   }
 
-// Immediately mark readiness in case the video is already buffered
-markVideoReadyIfPlayable();
-
-boatVideo.addEventListener('loadeddata', markVideoReadyIfPlayable, { once:true });
-boatVideo.addEventListener('canplay', () => {
-  markVideoReadyIfPlayable();
-  if (boatVideo.paused) {
-    boatVideo.play().catch(() => {});
-  }
-});
-
-boatVideo.addEventListener('error', () => {
-  console.error('Lantern video errored, retrying with cache bust');
-  checkAndRestartVideo();
-});
+  boatVideo.addEventListener('canplay', () => {
+    markVideoReadyIfPlayable();
+    if (boatVideo.paused) {
+      boatVideo.play().catch(() => {});
+    }
+  });
 
   function checkAndRestartVideo() {
     if (!videoReady && videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
@@ -1085,7 +1075,8 @@ if (isWebKit) {
 
   ctx.globalCompositeOperation = 'screen'; // fallback: try 'lighter' if needed
 
-  ctx.drawImage(offCanvas, -displayW/2, -displayH/2, displayW, displayHeight);
+ ctx.drawImage(offCanvas, -displayW/2, -displayH/2, displayW, displayH);
+
 
   ctx.globalCompositeOperation = 'source-over';
 
