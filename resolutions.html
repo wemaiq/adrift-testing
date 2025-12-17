@@ -583,13 +583,68 @@
 
   /* ====== Media autoplay ====== */
   const DEFAULT_VOL = 0.28;
-  function startAudio(){ bgAudio.volume = DEFAULT_VOL; bgAudio.play().then(()=> updateSoundUI(true)).catch(()=>{}); }
-  function updateSoundUI(on){ soundToggle.classList.toggle('active', !!on); soundToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); soundToggle.textContent = on ? 'Sound: On' : 'Sound: Off'; }
+  const AUDIO_START_DELAY_MS = 2000;
+  let audioStartTimer = null;
+
+  function startAudio() {
+    if (audioStartTimer || !bgAudio.paused) return;
+
+    audioStartTimer = setTimeout(() => {
+      audioStartTimer = null;
+      bgAudio.volume = DEFAULT_VOL;
+      bgAudio.play().then(() => updateSoundUI(true)).catch(() => {});
+    }, AUDIO_START_DELAY_MS);
+  }
+
+  function cancelScheduledAudioStart() {
+    if (!audioStartTimer) return;
+    clearTimeout(audioStartTimer);
+    audioStartTimer = null;
+  }
+  function updateSoundUI(on) {
+    soundToggle.classList.toggle('active', !!on);
+    soundToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+    soundToggle.textContent = on ? 'Sound: On' : 'Sound: Off';
+  }
 
   let videoReady = false;
   let videoRestartAttempts = 0;
   const MAX_RESTART_ATTEMPTS = 2;
   let videoReadyCheckTimeoutId = null;
+  let restartCheckWasPending = false;
+  let videoWatchdogIntervalId = null;
+  let lastVideoWatchTime = 0;
+  const VIDEO_WATCHDOG_INTERVAL_MS = 4000;
+
+  function stopVideoWatchdog() {
+    if (videoWatchdogIntervalId) {
+      clearInterval(videoWatchdogIntervalId);
+      videoWatchdogIntervalId = null;
+    }
+  }
+
+  function startVideoWatchdog() {
+    stopVideoWatchdog();
+    lastVideoWatchTime = boatVideo ? boatVideo.currentTime : 0;
+    videoWatchdogIntervalId = setInterval(() => {
+      if (!boatVideo || !videoReady) return;
+
+      const currentTime = boatVideo.currentTime;
+      const stalled = Math.abs(currentTime - lastVideoWatchTime) < 0.05;
+      const pausedWhileReady = boatVideo.paused;
+      lastVideoWatchTime = currentTime;
+
+      if ((stalled || pausedWhileReady) && videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
+        console.warn('Boat video appears stalled or paused, attempting safe restart');
+        const shouldCacheBust = stalled && videoRestartAttempts > 0;
+        attemptSafeVideoRestart({ cacheBust: shouldCacheBust });
+      }
+    }, VIDEO_WATCHDOG_INTERVAL_MS);
+  }
+
+  function resetVideoWatchdog() {
+    startVideoWatchdog();
+  }
 
   function markVideoReadyIfPlayable() {
     if (boatVideo && boatVideo.readyState >= 2) {
@@ -598,6 +653,7 @@
         clearTimeout(videoReadyCheckTimeoutId);
         videoReadyCheckTimeoutId = null;
       }
+      startVideoWatchdog();
     }
   }
 
@@ -608,21 +664,37 @@
     }
   });
 
+  function attemptSafeVideoRestart({ cacheBust = false } = {}) {
+    if (!boatVideo || videoRestartAttempts >= MAX_RESTART_ATTEMPTS) return;
+
+    const currentSrc = boatVideo.currentSrc || boatVideo.src;
+    const newSrc = cacheBust ? `${currentSrc}${currentSrc.includes('?') ? '&' : '?'}t=${Date.now()}` : currentSrc;
+
+    videoRestartAttempts++;
+    videoReady = false;
+    stopVideoWatchdog();
+
+    boatVideo.pause();
+    boatVideo.src = '';
+    boatVideo.load();
+    boatVideo.src = newSrc;
+    boatVideo.load();
+
+    setTimeout(() => {
+      boatVideo.play().catch(() => {
+        console.error('Video restart failed');
+      });
+    }, 200);
+
+    scheduleVideoReadyCheck();
+    resetVideoWatchdog();
+  }
+
   function checkAndRestartVideo() {
     if (!videoReady && videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
+      const shouldCacheBust = videoRestartAttempts > 0;
       console.warn(`Video not ready after timeout, attempting restart ${videoRestartAttempts + 1}/${MAX_RESTART_ATTEMPTS}`);
-      videoRestartAttempts++;
-
-      const currentSrc = boatVideo.src;
-      boatVideo.src = '';
-      boatVideo.load();
-      boatVideo.src = currentSrc + '?t=' + Date.now();
-
-      setTimeout(() => {
-        boatVideo.play().catch(() => {
-          console.error('Video restart failed');
-        });
-      }, 500);
+      attemptSafeVideoRestart({ cacheBust: shouldCacheBust });
 
       if (videoRestartAttempts < MAX_RESTART_ATTEMPTS) {
         setTimeout(checkAndRestartVideo, 8000);
@@ -643,10 +715,26 @@
 
   boatVideo.play().catch(() => {});
   scheduleVideoReadyCheck();
+  startVideoWatchdog();
 
+  // Extra help for Safari's slower video initialization
+  if (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent)) {
+    setTimeout(() => {
+      markVideoReadyIfPlayable();
+      boatVideo.play().catch(() => {});
+    }, 800);
+  }
+
+  /* ==== CHANGED: don’t start audio when clicking Enter ==== */
   let audioStarted = false;
   function ensurePlay(e){
     if (audioStarted) return;
+
+    // Ignore interactions on the intro overlay (e.g., clicking "Enter")
+    const overlay = document.getElementById('intro-overlay');
+    if (overlay && e && overlay.contains(e.target)) {
+      return; // do nothing; keep listeners for later interactions
+    }
 
     if (!videoReady) {
       console.log('User interaction - forcing video restart');
@@ -656,18 +744,35 @@
     startAudio();
     audioStarted = true;
 
+    // Clean up listeners after first successful start outside the intro
     removeEventListener('pointerdown', ensurePlay);
     removeEventListener('keydown', ensurePlay);
   }
   addEventListener('pointerdown', ensurePlay);
   addEventListener('keydown', ensurePlay);
+  /* ==== end change ==== */
 
-  soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { bgAudio.pause(); updateSoundUI(false); } });
+  soundToggle.addEventListener('click', ()=>{ if(bgAudio.paused){ startAudio(); } else { cancelScheduledAudioStart(); bgAudio.pause(); updateSoundUI(false); } });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
+    if (document.hidden) {
+      if (videoReadyCheckTimeoutId) {
+        clearTimeout(videoReadyCheckTimeoutId);
+        videoReadyCheckTimeoutId = null;
+        restartCheckWasPending = true;
+      }
+      stopVideoWatchdog();
+      return;
+    }
+
     if (!bgAudio.paused) { bgAudio.play().catch(() => {}); }
     markVideoReadyIfPlayable();
     boatVideo.play().catch(() => {});
+
+    if (!videoReady || restartCheckWasPending) {
+      scheduleVideoReadyCheck();
+    }
+    restartCheckWasPending = false;
+    resetVideoWatchdog();
   });
 
   addEventListener('pageshow', (event) => {
@@ -682,8 +787,9 @@
     if (!videoReady) {
       scheduleVideoReadyCheck();
     }
+    resetVideoWatchdog();
   });
-
+  
   /* ===== Boats ===== */
   const CROP = {x:0, y:0, w:1, h:1};
   const BOAT_COUNT = window.innerWidth <= 640 ? 8 : 11, BOAT_HEIGHT=140;
