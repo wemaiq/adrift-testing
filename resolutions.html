@@ -727,7 +727,7 @@
 
   /* ==== CHANGED: don’t start audio when clicking Enter ==== */
   let audioStarted = false;
-  function ensurePlay(e){
+  function startMediaFromInteraction(e) {
     if (audioStarted) return;
 
     // Ignore interactions on the intro overlay (e.g., clicking "Enter")
@@ -747,6 +747,10 @@
     // Clean up listeners after first successful start outside the intro
     removeEventListener('pointerdown', ensurePlay);
     removeEventListener('keydown', ensurePlay);
+  }
+
+  function ensurePlay(e){
+    startMediaFromInteraction(e);
   }
   addEventListener('pointerdown', ensurePlay);
   addEventListener('keydown', ensurePlay);
@@ -1348,6 +1352,8 @@ if (isWebKit) {
   }
 
   function openNoteFromBoat(boat){
+    startMediaFromInteraction();
+
     boat.morphingIn = true;
     boat.morphT0 = performance.now();
     const entry = boat.entry || {};
@@ -1375,6 +1381,8 @@ if (isWebKit) {
 
   function openComposerNote() {
     composerOpen = true;
+
+    startMediaFromInteraction();
 
     const noteTitle = 'Release a resolution';
     const placeholderText = 'Type your resolution (200 characters max)';
