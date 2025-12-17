@@ -1051,10 +1051,9 @@
 
       const ua = navigator.userAgent;
 
-// Only use WebKit workaround for Safari on iOS, NOT for Chrome/Firefox on iOS
-const isIOSSafari = /Safari/.test(ua) && /iPhone|iPad|iPod/.test(ua) && !/Chrome|CriOS|Firefox|FxiOS/.test(ua);
+const isWebKit = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg/.test(ua);
 
-if (isIOSSafari) {
+if (isWebKit) {
   const dpr = window.devicePixelRatio || 1;
   const offCanvas = document.createElement('canvas');
   offCanvas.width  = displayW * dpr;
@@ -1067,7 +1066,6 @@ if (isIOSSafari) {
   ctx.drawImage(offCanvas, -displayW/2, -displayH/2, displayW, displayH);
   ctx.globalCompositeOperation = 'source-over';
 } else {
-  // Standard path for all other browsers including iOS Chrome, iOS Firefox, etc.
   const prev = ctx.globalCompositeOperation;
   ctx.globalCompositeOperation = 'screen';
   ctx.drawImage(boatVideo, srcX, srcY, srcW, srcH, -displayW/2, -displayH/2, displayW, displayH);
