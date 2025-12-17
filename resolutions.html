@@ -1051,45 +1051,27 @@
 
       const ua = navigator.userAgent;
 
-const isWebKit = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg/.test(ua);
+// Only use WebKit workaround for Safari on iOS, NOT for Chrome/Firefox on iOS
+const isIOSSafari = /Safari/.test(ua) && /iPhone|iPad|iPod/.test(ua) && !/Chrome|CriOS|Firefox|FxiOS/.test(ua);
 
-
-
-if (isWebKit) {
-
+if (isIOSSafari) {
   const dpr = window.devicePixelRatio || 1;
-
   const offCanvas = document.createElement('canvas');
-
   offCanvas.width  = displayW * dpr;
-
   offCanvas.height = displayH * dpr;
-
   const offCtx = offCanvas.getContext('2d');
-
   offCtx.scale(dpr, dpr);
-
   offCtx.drawImage(boatVideo, srcX, srcY, srcW, srcH, 0, 0, displayW, displayH);
 
-
-
-  ctx.globalCompositeOperation = 'screen'; // fallback: try 'lighter' if needed
-
- ctx.drawImage(offCanvas, -displayW/2, -displayH/2, displayW, displayH);
-
-
-  ctx.globalCompositeOperation = 'source-over';
-
-} else {
-
-  const prev = ctx.globalCompositeOperation;
-
   ctx.globalCompositeOperation = 'screen';
-
+  ctx.drawImage(offCanvas, -displayW/2, -displayH/2, displayW, displayH);
+  ctx.globalCompositeOperation = 'source-over';
+} else {
+  // Standard path for all other browsers including iOS Chrome, iOS Firefox, etc.
+  const prev = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'screen';
   ctx.drawImage(boatVideo, srcX, srcY, srcW, srcH, -displayW/2, -displayH/2, displayW, displayH);
-
   ctx.globalCompositeOperation = prev;
-
 }
 
       if (supportsFilter) {
