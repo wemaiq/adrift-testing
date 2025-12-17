@@ -702,41 +702,58 @@
     const headers = {
       apikey: SUPABASE_ANON,
       Authorization: `Bearer ${SUPABASE_ANON}`,
-      Accept: 'application/json'
+      Accept: 'application/json',
+      Prefer: 'count=exact'
     };
 
-    const url = `${SUPABASE_URL}/rest/v1/doubts` +
+    const baseFilter =
       `?select=id,doubt,created_at,resolution` +
       `&approved=is.null` +
       `&support=is.null` +
-      `&resolution=is.true` +
-      `&order=created_at.desc` +
-      `&limit=${limit}`;
+      `&resolution=is.true`;
 
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Resolution fetch failed (${res.status}) ${text}`);
+    // 1) Tiny count request (reads total from headers)
+    const countRes = await fetch(`${SUPABASE_URL}/rest/v1/doubts${baseFilter}&limit=1`, { headers });
+    if (!countRes.ok) throw new Error(`resolution count failed (${countRes.status})`);
+    const total = parseInt(countRes.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+    if (!total) return [];
+
+    // 2) Stratified sampling across the full timeline (old + new)
+    const bins = Math.min(12, Math.max(6, Math.ceil(limit / 10))); // 6–12 bins
+    const perBin = Math.max(1, Math.ceil(limit / bins));
+    const binSize = Math.max(1, Math.floor(total / bins));
+
+    const buildUrl = (o, l) =>
+      `${SUPABASE_URL}/rest/v1/doubts${baseFilter}` +
+      `&order=created_at.asc` +
+      `&limit=${l}&offset=${o}`;
+
+    const requests = [];
+    for (let i = 0; i < bins; i++) {
+      const base = i * binSize;
+      const jitterRoom = Math.max(1, binSize - perBin);
+      const jitter = Math.floor(Math.random() * jitterRoom);
+      const offset = Math.min(Math.max(0, base + jitter), Math.max(0, total - perBin));
+      requests.push(fetch(buildUrl(offset, perBin), { headers }).then(r => r.json()));
     }
 
-    const data = await res.json();
-    const rows = Array.isArray(data) ? data : [data];
+    // 3) Merge, dedupe, shuffle, trim
+    const groups = await Promise.all(requests);
+    const rows = groups.flat().filter(r => r?.id && r?.doubt);
 
-    return rows
-      .map((row, idx) => {
-        const text = String(row?.doubt ?? '').trim();
-        if (!text) return null;
+    const seen = new Set();
+    const deduped = rows.filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 
-        const createdAt = row?.created_at ? String(row.created_at) : new Date().toISOString();
+    for (let i = deduped.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deduped[i], deduped[j]] = [deduped[j], deduped[i]];
+    }
 
-        return {
-          id: row?.id ? String(row.id) : `resolution-${idx + 1}`,
-          text,
-          date: createdAt.slice(0, 10)
-        };
-      })
-      .filter(Boolean)
-      .slice(0, limit);
+    return deduped.slice(0, limit).map(r => ({
+      id: r.id,
+      text: String(r.doubt).trim(),
+      date: (r.created_at || new Date().toISOString()).slice(0, 10)
+    }));
   }
 
   /* ===== Turnstile + Worker intake (WRITE) ===== */
