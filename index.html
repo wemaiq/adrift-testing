@@ -2027,11 +2027,20 @@ function markVideoReadyIfPlayable() {
   }
 }
 
+// Handle cases where the video is already buffered before listeners attach
+markVideoReadyIfPlayable();
+
+boatVideo.addEventListener('loadeddata', markVideoReadyIfPlayable, { once:true });
 boatVideo.addEventListener('canplay', () => {
   markVideoReadyIfPlayable();
   if (boatVideo.paused) {
     boatVideo.play().catch(() => {});
   }
+});
+
+boatVideo.addEventListener('error', () => {
+  console.error('Boat video errored, retrying with cache bust');
+  attemptSafeVideoRestart({ cacheBust: true });
 });
 
 function attemptSafeVideoRestart({ cacheBust = false } = {}) {
