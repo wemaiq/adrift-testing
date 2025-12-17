@@ -1589,9 +1589,10 @@ async function fetchTotalDoubts() {
     Prefer: 'count=exact'
   };
 
-  const [doubtsResult, supportResult] = await Promise.allSettled([
+  const [doubtsResult, supportResult, resolutionsResult] = await Promise.allSettled([
     fetch(`${SUPABASE_URL}/rest/v1/doubts?select=count&approved=is.true`, { headers }),
-    fetch(`${SUPABASE_URL}/rest/v1/doubts?select=count&support=is.true`, { headers })
+    fetch(`${SUPABASE_URL}/rest/v1/doubts?select=count&support=is.true`, { headers }),
+    fetch(`${SUPABASE_URL}/rest/v1/doubts?select=count&support=is.null&approved=is.null&resolution=is.true`, { headers })
   ]);
 
   const parseCount = (result) => {
@@ -1602,7 +1603,7 @@ async function fetchTotalDoubts() {
     return Number.isFinite(total) ? total : 0;
   };
 
-  return parseCount(doubtsResult) + parseCount(supportResult);
+  return parseCount(doubtsResult) + parseCount(supportResult) + parseCount(resolutionsResult);
 }
 
 async function fetchSupportNotes(limit = 400) {
