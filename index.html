@@ -1080,6 +1080,16 @@ header.ripple span.figtree-adrift {
   let SHUFFLED_SUPPORT_NOTES = [];
   let USED_SUPPORT_IDS = new Set();
   let supportFetchPromise = null;
+  let lastSupportFetchAt = 0;
+  const SUPPORT_REFRESH_MS = 2 * 60 * 1000;
+
+  function supportNeedsRefresh() {
+    if (!supportList) return !ACTIVE_SUPPORT_NOTES.length;
+    const isStale = !lastSupportFetchAt || (Date.now() - lastSupportFetchAt) > SUPPORT_REFRESH_MS;
+    return !ACTIVE_SUPPORT_NOTES.length
+      || Boolean(supportList.querySelector('.support-column__empty'))
+      || isStale;
+  }
 
   function normalizeSupportItem(raw = {}, fallbackRow = {}, index = 0) {
     if (!raw) return null;
@@ -1326,8 +1336,8 @@ header.ripple span.figtree-adrift {
     updateToggleState();
     reseedBoatsForCurrentView();
     applyViewState();
-    if (currentView === 'affirmations' && ACTIVE_SUPPORT_NOTES.length === 0) {
-      ensureSupportData(400);
+    if (currentView === 'affirmations') {
+      ensureSupportData(400, { force: supportNeedsRefresh() });
     }
   }
 
@@ -1655,21 +1665,25 @@ async function fetchSupportNotes(limit = 400) {
     .slice(0, limit);
 }
 
-async function ensureSupportData(limit = 400) {
+async function ensureSupportData(limit = 400, { force = false } = {}) {
+  if (!force && ACTIVE_SUPPORT_NOTES.length) {
+    renderSupportColumn();
+    return ACTIVE_SUPPORT_NOTES;
+  }
   if (supportFetchPromise) return supportFetchPromise;
   supportFetchPromise = (async () => {
     try {
       const notes = await fetchSupportNotes(limit);
       setSupportNotes(notes);
-      if (!notes.length) {
-        supportFetchPromise = null;
-      }
+      lastSupportFetchAt = Date.now();
       return notes;
     } catch (err) {
       console.error('Failed to load support notes:', err);
       setSupportNotes([]);
-      supportFetchPromise = null;
+      lastSupportFetchAt = Date.now();
       return [];
+    } finally {
+      supportFetchPromise = null;
     }
   })();
   return supportFetchPromise;
@@ -2190,7 +2204,7 @@ addEventListener('pageshow', (event) => {
   }
   resetVideoWatchdog();
   if (currentView === 'affirmations' || ACTIVE_SUPPORT_NOTES.length === 0) {
-    ensureSupportData(400);
+    ensureSupportData(400, { force: supportNeedsRefresh() });
   }
 });
 
