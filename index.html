@@ -1179,6 +1179,7 @@ header.ripple span.figtree-adrift {
 
   function pickRandomCareNote() {
     if (!ACTIVE_SUPPORT_NOTES.length) {
+      ensureSupportData(400);
       return {
         id: 'care-placeholder',
         text: 'Care notes are on their way.',
@@ -1326,6 +1327,9 @@ header.ripple span.figtree-adrift {
     updateToggleState();
     reseedBoatsForCurrentView();
     applyViewState();
+    if (currentView === 'affirmations' && ACTIVE_SUPPORT_NOTES.length === 0) {
+      ensureSupportData(400);
+    }
   }
 
   if (viewToggleButtons.length) {
@@ -1658,10 +1662,14 @@ async function ensureSupportData(limit = 400) {
     try {
       const notes = await fetchSupportNotes(limit);
       setSupportNotes(notes);
+      if (!notes.length || ACTIVE_SUPPORT_NOTES.length === 0) {
+        supportFetchPromise = null;
+      }
       return notes;
     } catch (err) {
       console.error('Failed to load support notes:', err);
       setSupportNotes([]);
+      supportFetchPromise = null;
       return [];
     }
   })();
@@ -2182,6 +2190,9 @@ addEventListener('pageshow', (event) => {
     scheduleVideoReadyCheck();
   }
   resetVideoWatchdog();
+  if (currentView === 'affirmations' || ACTIVE_SUPPORT_NOTES.length === 0) {
+    ensureSupportData(400);
+  }
 });
 
   /* ===== Boats ===== */
